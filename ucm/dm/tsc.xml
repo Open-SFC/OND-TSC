@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataModel ModuleName="tsc" Version="3.4" schemaVersion="3.0">
+        <InstallPath>on_director.tsc</InstallPath>
+
+        <DataModelNode>
+                <InstallPath>selectors</InstallPath>
+                <Name>selectors</Name>
+                <NodeID />
+                <Description>Selectors</Description>
+                <SaveDirName>CM_CONFIG_DIR</SaveDirName>
+                <StorageFileName>NULL</StorageFileName>
+                <NodeAttributes>
+                        <NodeType>CM_DMNODE_TYPE_TABLE</NodeType>
+                        <Visible>TRUE</Visible>
+                        <IsKey>FALSE</IsKey>
+                        <Mandatory>FALSE</Mandatory>
+                        <OrderedTable>FALSE</OrderedTable>
+                        <PriorityNode>FALSE</PriorityNode>
+                        <NotifyChange>FALSE</NotifyChange>
+                        <NotifyType>CM_NOT_CHANGEABLE_BY_ACS</NotifyType>
+                        <RebootOnChange>FALSE</RebootOnChange>
+                        <StickyToParent>FALSE</StickyToParent>
+                        <SaveInParentDir>TRUE</SaveInParentDir>
+                        <NonConfigLeafNode>FALSE</NonConfigLeafNode>
+                        <AccessControl>CM_ACCESS_ALL</AccessControl>
+                        <GroupedScalar>FALSE</GroupedScalar>
+                        <GlobalTrans>FALSE</GlobalTrans>
+                        <UseParentTrans>FALSE</UseParentTrans>
+                </NodeAttributes>
+                <DataAttributes>
+                        <DataType>CM_DATA_TYPE_UNKNOWN</DataType>
+                        <Type>CM_DATA_ATTRIB_NONE</Type>
+                        <DataAttrib/>
+                </DataAttributes>
+        </DataModelNode>
+
+        <DataModelNode>
+                <InstallPath>repository</InstallPath>
+                <Name>repository</Name>
+                <NodeID />
+                <Description>Repository</Description>
+                <SaveDirName>CM_CONFIG_DIR</SaveDirName>
+                <StorageFileName>NULL</StorageFileName>
+                <NodeAttributes>
+                        <NodeType>CM_DMNODE_TYPE_TABLE</NodeType>
+                        <Visible>TRUE</Visible>
+                        <IsKey>FALSE</IsKey>
+                        <Mandatory>FALSE</Mandatory>
+                        <OrderedTable>FALSE</OrderedTable>
+                        <PriorityNode>FALSE</PriorityNode>
+                        <NotifyChange>FALSE</NotifyChange>
+                        <NotifyType>CM_NOT_CHANGEABLE_BY_ACS</NotifyType>
+                        <RebootOnChange>FALSE</RebootOnChange>
+                        <StickyToParent>FALSE</StickyToParent>
+                        <SaveInParentDir>TRUE</SaveInParentDir>
+                        <NonConfigLeafNode>FALSE</NonConfigLeafNode>
+                        <AccessControl>CM_ACCESS_ALL</AccessControl>
+                        <GroupedScalar>FALSE</GroupedScalar>
+                        <GlobalTrans>FALSE</GlobalTrans>
+                        <UseParentTrans>FALSE</UseParentTrans>
+                </NodeAttributes>
+                <DataAttributes>
+                        <DataType>CM_DATA_TYPE_UNKNOWN</DataType>
+                        <Type>CM_DATA_ATTRIB_NONE</Type>
+                        <DataAttrib/>
+                </DataAttributes>
+        </DataModelNode>
+
+         <DataModelNode>
+                <InstallPath>table_3_repository</InstallPath>
+                <Name>table_3_repository</Name>
+                <NodeID />
+                <Description>table_3_repository</Description>
+                <SaveDirName>CM_CONFIG_DIR</SaveDirName>
+                <StorageFileName>NULL</StorageFileName>
+                <NodeAttributes>
+                        <NodeType>CM_DMNODE_TYPE_TABLE</NodeType>
+                        <Visible>TRUE</Visible>
+                        <IsKey>FALSE</IsKey>
+                        <Mandatory>FALSE</Mandatory>
+                        <OrderedTable>FALSE</OrderedTable>
+                        <PriorityNode>FALSE</PriorityNode>
+                        <NotifyChange>FALSE</NotifyChange>
+                        <NotifyType>CM_NOT_CHANGEABLE_BY_ACS</NotifyType>
+                        <RebootOnChange>FALSE</RebootOnChange>
+                        <StickyToParent>FALSE</StickyToParent>
+                        <SaveInParentDir>TRUE</SaveInParentDir>
+                        <NonConfigLeafNode>FALSE</NonConfigLeafNode>
+                        <AccessControl>CM_ACCESS_ALL</AccessControl>
+                        <GroupedScalar>FALSE</GroupedScalar>
+                        <GlobalTrans>FALSE</GlobalTrans>
+                        <UseParentTrans>FALSE</UseParentTrans>
+                </NodeAttributes>
+                <DataAttributes>
+                        <DataType>CM_DATA_TYPE_UNKNOWN</DataType>
+                        <Type>CM_DATA_ATTRIB_NONE</Type>
+                        <DataAttrib/>
+                </DataAttributes>
+        </DataModelNode>
+
+
+
+</DataModel>
+

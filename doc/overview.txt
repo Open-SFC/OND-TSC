@@ -1,0 +1,76 @@
+                                                   Overview of Traffic Steering Controller (TSC) Module           
+                                                   ----------------------------------------------------
+
+1.TSC is designed to steer Traffic across Application Virtual Machines(VMs) with Chained L2 Network Functions in place.
+
+2.Network Functions are hosted by Service Virtual Machines(SVMs).
+
+3.Both VMs and SVMs can be co-located in the same Compute Node or different compute nodes.
+ 
+4. Openstack dash board is used to configure the cloud and the configuration information is captured and sent to OF-Controller
+   by CRD service running in Openstack controller.
+   A. CRM database located in OF-Controller holds the configuration related to Virtual Machines,Virtual Networks and 
+      Ports configured on OVS Switches.
+   B. NSRM Database located in OF-Controller holds the Configuration related to service chaining information like the selection rules,
+      service chain object and bypass service rules.    
+   C. Traffic steering module adds flows to OVS switches in compute nodes based on the CRM and NSRM database configuration to steer
+      traffic across VMs via configured SVMs.
+
+5. TSC can be used to steer traffic in deployments with multiple Compute Nodes with each Compute Node holding many VMs and SVMs configured.   
+
+
+    +------------------+
+    |                  |
+    |     Openstack    |Create VMs,configure OVS
+    |     Conroller    |___________________________
+    |                  |                           |
+    |                  |                           | 
+    +------------------+       Compute Node 1      |                 Compute Node 2 
+              |                +-------------------|---------+       +---------------------------------+
+              |                |+------+       +--------+    |       |+-----------+    +-------------+ |
+     Config   |                || VM 1 |       |  SVM 1 |    |       ||   VM 2    |    |    SVM 3    | | 
+     push     |                |+---|--+       +----|---+    |       |+------|----+    +-------|-----+ |
+     to       |                | +--|---------------|-----+  |       | +-----|-----------------|-----+ |
+ OF-Controller|                | |       OVS Switch       +  |       | |       OVS Switch            | |  
+              |                | +---|-------|------------+  |       | +-----------------|-----------+ |
+    +------------------+       +-----|-------|---------------+       +-------------------|-------------+
+    |                  |             |       |                                           |
+    |     OpenFlow     |             |       |______________VXLAN.NVGRE__________________|                                  
+    |     Controller   |_____________|
+    |                  | Adds Flows to OVS Switches
+    |                  | 
+    +------------------+         
+
+
+                                 Deployment diagram with VM1 and VM2 communicating via SVM1 and SVM2
+                                 -------------------------------------------------------------------
+
+
+6. Network Virtualization is achieved using VXLAN protocol suported by OVS switches.
+   A.Multiple L2 networks can be configured.
+   B.Each VM/SVM is connected to OVS switch via one port and is configured to belong to one given L2 network.   
+   C.TSC module design allows network types of VXALAN or NVGRE, bur testing is done only with VXLAN. 
+
+7. Service chaining configuration allows not only multiple Services but also supports multiple instances of the same service. 
+   A.Incase of multiple instances of a service are running,TSC load balances the traffic on connection basis across multiple instances 
+     of the same service using round robin method.
+   
+
+8. Service chaining rules are configured based on 5 tuple (IPs,Protocol and Ports). 
+   A. A connection bind entry table is used to maintain connections.
+   B. Multiple Flows are derived from each Connection bind entry and the flows are programmed to OF logical switches.
+   C. For some of the OF-Tables,repository tables are maintained to hold these flows as repository entries to avoid lookup 
+      in case of flow removal from from logical switches due to flow eviction.
+       
+
+                                         Features that are planned for next releases.
+                                         -------------------------------------------
+
+1. Load balancing the traffic based on number of packets and bytes.
+
+2. Monitor the traffic and inform openstack controller to add/delete service instances to take care of changing traffic loads.
+
+3. De-Launching of services is not fully supported and tested which will be taken up in future versions.
+
+4. CLI commands to display the number of connection bind entries and repository entries is implemented but need to be tested.
+
