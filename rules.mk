@@ -1,6 +1,6 @@
 #working directory
 
-OND_OF_DRVR_INST_DIR = /usr/local/ond_of_driver
+OND_OF_DRVR_INST_DIR = /usr/local/ond_of_driver/1.0
 
 tscapp_dir = $(PWD)
 

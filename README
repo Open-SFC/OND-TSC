@@ -1,9 +1,9 @@
 Installation/Build Procedure:
 
 1.  Traffic Streering Controller code can be checked out from http://github.com with the below command:
-    git clone https://github.com/Open-SFC/OND-TSC.git
+    git clone https://github.com/Open-SFC/ond-tsc.git
 
-    This will create OND-TSC repositoy in your currnet directory.
+    This will create ond-tsc repositoy in your currnet directory.
 
 2. Move to checked out directory 
 
@@ -12,12 +12,12 @@ Installation/Build Procedure:
 3. Build TSC application. Execute the following commands.
   
    Note : TSC app assumes ONdirector binaries and header files are installed in
-   "/usr/local/ond-of-driver". if not, this definition has to be set "OND_OF_DRVR_INST_DIR" 
+   "/usr/local/ond-of-driver/1.0". if not, this definition has to be set "OND_OF_DRVR_INST_DIR" 
    accordingly.
 
    source x86-64bit-env.sh
    make 
-   mak install  #This will install the TSC app shared object files in "/usr/local/ond-of-driver/lib/ofapps"
+   mak install  #This will install the TSC app shared object files in "/usr/local/ond-of-driver/1.0/lib/ofapps"
    
 4. Testing and validation.
 
