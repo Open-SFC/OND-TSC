@@ -33,11 +33,13 @@
 extern uint32_t vn_nsc_info_offset_g;
 extern struct   tsc_nvm_module_interface tsc_nvm_modules[SUPPORTED_NW_TYPE_MAX + 1];
 extern uint32_t nsc_no_of_cnbind_table_buckets_g;
+extern struct   tsc_bintree_node* tsc_bintree_root;
+extern cntlr_lock_t global_mac_lock;
 
-extern  cntlr_lock_t global_mac_lock;
+//uint32_t tsc_nsc_find_zone(uint32_t src_ip);
+
 uint8_t local_in_mac[6]  = {02,01,01,01,01,02};
 uint8_t local_out_mac[6] = {06,01,01,01,01,02};
-
 /*****************************************************************************************************************************************
 Function: nsc_get_cnbind_entry
 Input Parameters: 
@@ -72,10 +74,11 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
 
   uint64_t vn_handle;
   uint32_t hashmask,hashkey,offset;
-  uint8_t  entry_found = 0,ii;
+  uint8_t  ii;
   int32_t  retval;
   uint8_t  heap_b;
   struct   nsc_selector_node *selector_p,*selector2_p,*selector_node_scan_p;
+  struct   tsc_bintree_node  *zone_node;
 
   hashmask = nsc_no_of_cnbind_table_buckets_g;
 
@@ -100,138 +103,164 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
 
-  retval = mempool_get_mem_block(vn_nsc_info_p->nsc_cn_bind_mempool_g,(uchar8_t **)&cn_bind_node_entry_p,&heap_b);
-  if(retval != MEMPOOL_SUCCESS)
-  {
-    CNTLR_RCU_READ_LOCK_RELEASE(); 
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to create mempool entry for cn_bind_node_entry");
-    return OF_FAILURE;
-  }
-  
-  cn_bind_node_entry_p->heap_b = heap_b;
   offset = NSC_SELECTOR_NODE_OFFSET;
   MCHASH_BUCKET_SCAN(vn_nsc_info_p->l2_connection_to_nsinfo_bind_table_p,hashkey,selector_node_scan_p,struct nsc_selector_node *, offset)
   {
-     if((selector_node_scan_p->cnbind_node_p->stale_entry == 1) || (selector_node_scan_p->cnbind_node_p->skip_this_entry == 1)) 
-       continue;  
+    if((selector_node_scan_p->cnbind_node_p->stale_entry == 1) || (selector_node_scan_p->cnbind_node_p->skip_this_entry == 1)) 
+      continue;  
     
-     if((pkt_selector_p->src_ip   != selector_node_scan_p->src_ip )  ||
-        (pkt_selector_p->dst_ip   != selector_node_scan_p->dst_ip )  ||
-        (pkt_selector_p->protocol != selector_node_scan_p->protocol) ||
-        (pkt_selector_p->src_port != selector_node_scan_p->src_port) ||
-        (pkt_selector_p->dst_port != selector_node_scan_p->dst_port) ||
+    if((pkt_selector_p->src_ip   != selector_node_scan_p->src_ip )  ||
+       (pkt_selector_p->dst_ip   != selector_node_scan_p->dst_ip )  ||
+       (pkt_selector_p->protocol != selector_node_scan_p->protocol) ||
+       (pkt_selector_p->src_port != selector_node_scan_p->src_port) ||
+       (pkt_selector_p->dst_port != selector_node_scan_p->dst_port) ||
 
-        (pkt_selector_p->ethernet_type != selector_node_scan_p->ethernet_type)
-     )
-     {
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"NSM Selector is not matching. selector type 1:PRIMARY 2:SECONDARY  = %d",selector_node_scan_p->selector_type);
-       continue;
-     }
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"NSM A matching Selector is found. selector type 1:PRIMARY 2:SECONDARY  = %d",selector_node_scan_p->selector_type);
-    
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_ip       = %x,%x",pkt_selector_p->src_ip,selector_node_scan_p->src_ip);
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_ip       = %x,%x",pkt_selector_p->dst_ip,selector_node_scan_p->dst_ip);
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_protocol = %x,%x",pkt_selector_p->protocol,selector_node_scan_p->protocol);
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_port     = %x,%x",pkt_selector_p->src_port,selector_node_scan_p->src_port);
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_port     = %x,%x",pkt_selector_p->dst_port,selector_node_scan_p->dst_port);
+       (pkt_selector_p->ethernet_type != selector_node_scan_p->ethernet_type)
+    )
+    {
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"NSM Selector is not matching. selector type 1:PRIMARY 2:SECONDARY  = %d",selector_node_scan_p->selector_type);
+      continue;
+    }
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"NSM A matching Selector is found. selector type 1:PRIMARY 2:SECONDARY  = %d",selector_node_scan_p->selector_type);
+      
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_ip       = %x,%x",pkt_selector_p->src_ip,selector_node_scan_p->src_ip);
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_ip       = %x,%x",pkt_selector_p->dst_ip,selector_node_scan_p->dst_ip);
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_protocol = %x,%x",pkt_selector_p->protocol,selector_node_scan_p->protocol);
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_port     = %x,%x",pkt_selector_p->src_port,selector_node_scan_p->src_port);
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_port     = %x,%x",pkt_selector_p->dst_port,selector_node_scan_p->dst_port);
  
-     /* The presence of other selector is obvious as both get created at once. */
-     *selector_type_p   = selector_node_scan_p->selector_type; /* PRIMARY or SECONDARY */
-     *cn_bind_node_p_p  = selector_node_scan_p->cnbind_node_p;
-     entry_found = 1;
-     //printf("\r\n In nsc_get_cnbind_entry and found a matching selector"); 
-     if(copy_original_mac_b == TRUE)
-     {
-       pkt_selector_p->src_mac_low    = (selector_node_scan_p->src_mac_low);
-       pkt_selector_p->src_mac_high   = (selector_node_scan_p->src_mac_high);
+    /* The presence of other selector is obvious as both get created at once. */
+    *selector_type_p   = selector_node_scan_p->selector_type; /* PRIMARY or SECONDARY */
+    *cn_bind_node_p_p  = selector_node_scan_p->cnbind_node_p;
+     
+    if(selector_node_scan_p->selector_type == SELECTOR_PRIMARY)
+      pkt_selector_p->zone         = selector_node_scan_p->cnbind_node_p->selector_1.zone;
+    else
+      pkt_selector_p->zone         = selector_node_scan_p->cnbind_node_p->selector_2.zone;
 
-       pkt_selector_p->dst_mac_low    = (selector_node_scan_p->dst_mac_low);
-       pkt_selector_p->dst_mac_high   = (selector_node_scan_p->dst_mac_high);
+    if(copy_original_mac_b == TRUE)
+    {
+      pkt_selector_p->src_mac_low    = (selector_node_scan_p->src_mac_low);
+      pkt_selector_p->src_mac_high   = (selector_node_scan_p->src_mac_high);
 
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_low  = %x",selector_node_scan_p->src_mac_low);
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_high = %x",selector_node_scan_p->src_mac_high);
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_low  = %x",selector_node_scan_p->dst_mac_low);
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_high = %x",selector_node_scan_p->dst_mac_high);
+      pkt_selector_p->dst_mac_low    = (selector_node_scan_p->dst_mac_low);
+      pkt_selector_p->dst_mac_high   = (selector_node_scan_p->dst_mac_high);
 
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_low  = %x",pkt_selector_p->src_mac_low);
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_high = %x",pkt_selector_p->src_mac_high);
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_low  = %x",pkt_selector_p->dst_mac_low);
-       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_high = %x",pkt_selector_p->dst_mac_high);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_low  = %x",selector_node_scan_p->src_mac_low);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_high = %x",selector_node_scan_p->src_mac_high);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_low  = %x",selector_node_scan_p->dst_mac_low);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_high = %x",selector_node_scan_p->dst_mac_high);
 
-       for(ii=0;ii<6;ii++)
-       {
-         pkt_selector_p->src_mac[ii] = selector_node_scan_p->src_mac[ii];
-         pkt_selector_p->dst_mac[ii] = selector_node_scan_p->dst_mac[ii];
-       }
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_low  = %x",pkt_selector_p->src_mac_low);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac_high = %x",pkt_selector_p->src_mac_high);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_low  = %x",pkt_selector_p->dst_mac_low);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac_high = %x",pkt_selector_p->dst_mac_high);
+
+      for(ii=0;ii<6;ii++)
+      {
+        pkt_selector_p->src_mac[ii] = selector_node_scan_p->src_mac[ii];
+        pkt_selector_p->dst_mac[ii] = selector_node_scan_p->dst_mac[ii];
+      }
     
-       for(ii=0;ii<6;ii++)
-       {
-         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac = %x",pkt_selector_p->src_mac[ii]);
-         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac = %x",pkt_selector_p->dst_mac[ii]);
-       }
-     }
+      for(ii=0;ii<6;ii++)
+      {
+        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src_mac = %x",pkt_selector_p->src_mac[ii]);
+        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dst_mac = %x",pkt_selector_p->dst_mac[ii]);
+      }
+    }
+
+    pkt_selector_p->magic          = selector_node_scan_p->magic;
+    pkt_selector_p->index          = selector_node_scan_p->index;
+    pkt_selector_p->safe_reference = selector_node_scan_p->safe_reference;
+    pkt_selector_p->cnbind_node_p  = selector_node_scan_p->cnbind_node_p;
+    pkt_selector_p->selector_type  = selector_node_scan_p->selector_type;
+    pkt_selector_p->hashkey        = selector_node_scan_p->hashkey;
+    pkt_selector_p->other_selector_p                 = &(selector_node_scan_p->cnbind_node_p->selector_2);
+    pkt_selector_p->other_selector_p->index          = selector_node_scan_p->cnbind_node_p->selector_2.index;
+    pkt_selector_p->other_selector_p->magic          = selector_node_scan_p->cnbind_node_p->selector_2.magic;
+    pkt_selector_p->other_selector_p->safe_reference = selector_node_scan_p->cnbind_node_p->selector_2.safe_reference;
+
+    CNTLR_RCU_READ_LOCK_RELEASE();
+    return NSC_CONNECTION_BIND_ENTRY_FOUND;
+  } 
+  
+  retval = mempool_get_mem_block(vn_nsc_info_p->nsc_cn_bind_mempool_g,(uchar8_t **)&cn_bind_node_entry_p,&heap_b);
+  if(retval != MEMPOOL_SUCCESS)
+  {
+    CNTLR_RCU_READ_LOCK_RELEASE();
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to create mempool entry for cn_bind_node_entry");
+    return OF_FAILURE;
   }
+  cn_bind_node_entry_p->heap_b = heap_b;
 
   CNTLR_RCU_READ_LOCK_RELEASE();
 
-  if(entry_found == 1)
-  {
-    pkt_selector_p->magic  = selector_node_scan_p->magic;
-    pkt_selector_p->index  = selector_node_scan_p->index;
-    pkt_selector_p->safe_reference = selector_node_scan_p->safe_reference;
-    pkt_selector_p->cnbind_node_p  = selector_node_scan_p->cnbind_node_p;
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"No matching Selector is found.Populating the second selector also.");
+  //printf("\r\n In nsc_get_cnbind_entry and NOT found a matching selector,creating selectors");
+  CNTLR_LOCK_INIT(cn_bind_node_entry_p->cnbind_node_lock); 
 
-    mempool_release_mem_block(vn_nsc_info_p->nsc_cn_bind_mempool_g,(uchar8_t*)cn_bind_node_entry_p,cn_bind_node_entry_p->heap_b);
-    return NSC_CONNECTION_BIND_ENTRY_FOUND;
-  }
+  cn_bind_node_entry_p->cnbind_sel_refcnt = 0;   /* To release cnbind entry */
+  cn_bind_node_entry_p->no_of_flow_entries_deduced = 0;
+  cn_bind_node_entry_p->nsc_cn_bind_mempool_g = vn_nsc_info_p->nsc_cn_bind_mempool_g; /* For deletion purpose */
+
+  selector_p   = &(cn_bind_node_entry_p->selector_1);
+  *selector_p  = *pkt_selector_p;
+  selector_p->selector_type = *selector_type_p = (uint8_t)SELECTOR_PRIMARY;
+  selector_p->hashkey       = hashkey;
+  selector_p->cnbind_node_p = cn_bind_node_entry_p;
+  selector_p->cnbind_node_p->stale_entry = 0;
+  selector_p->cnbind_node_p->skip_this_entry = 0;
+
+  zone_node = tsc_bintree_find(tsc_bintree_root,selector_p->src_ip);
+  if(zone_node != NULL)
+    selector_p->zone  = zone_node->zone;
   else
-  {
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"No matching Selector is found.Populating the second selector also.");
-    //printf("\r\n In nsc_get_cnbind_entry and NOT found a matching selector,creating selectors");
-    CNTLR_LOCK_INIT(cn_bind_node_entry_p->cnbind_node_lock); 
+    selector_p->zone  = ZONE_LESS;  
 
-    cn_bind_node_entry_p->cnbind_sel_refcnt = 0;   /* To release cnbind entry */
-    cn_bind_node_entry_p->no_of_flow_entries_deduced = 0;
-    cn_bind_node_entry_p->nsc_cn_bind_mempool_g = vn_nsc_info_p->nsc_cn_bind_mempool_g; /* For deletion purpose */
-
-    selector_p   = &(cn_bind_node_entry_p->selector_1);
-    *selector_p  = *pkt_selector_p;
-    selector_p->selector_type = *selector_type_p = (uint8_t)SELECTOR_PRIMARY;
-    selector_p->hashkey       = hashkey;
-    selector_p->cnbind_node_p = cn_bind_node_entry_p;
-    selector_p->cnbind_node_p->stale_entry = 0;
-    selector_p->cnbind_node_p->skip_this_entry = 0;
-    
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"selector_type : %d",selector_p->selector_type);
+  // selector_p->zone = tsc_nsc_find_zone(selector_p->src_ip);
+  
+  printf("\r\n tsc_nsc_cnbind.c vm_ip = %x",selector_p->src_ip);
+  printf("\r\n tsc_nsc_cnbind.c zone  = %d",selector_p->zone);
+  
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"selector_type : %d",selector_p->selector_type);
    
-    /* prepare the other selector */
-    selector2_p = &(cn_bind_node_entry_p->selector_2);
-    nsc_extract_packet_fields(pkt_in,selector2_p,PACKET_REVERSE,TRUE);
+  /* prepare the other selector */
+  selector2_p = &(cn_bind_node_entry_p->selector_2);
+  nsc_extract_packet_fields(pkt_in,selector2_p,PACKET_REVERSE,TRUE);
 
-    if((selector_p->protocol == OF_IPPROTO_ICMP) && (selector_p->src_port == 0x08) && (selector_p->dst_port == 0x00))
-    {
-      selector2_p->src_port = 0x00;
-      selector2_p->dst_port = 0x00;
-    }
-    
-    hashmask = nsc_no_of_cnbind_table_buckets_g;
-    /* Fields in this selector are extracted in reverse order */
-    hashkey  = NSC_COMPUTE_HASH_CNBIND_ENTRY(selector2_p->src_ip,selector2_p->dst_ip,
-                                             selector2_p->src_port,selector2_p->dst_port,
-                                             selector2_p->protocol,
-                                             selector2_p->ethernet_type,
-                                             hashmask
-                                           );
+  if((selector_p->protocol == OF_IPPROTO_ICMP) && (selector_p->src_port == 0x08) && (selector_p->dst_port == 0x00))
+  {
+    selector2_p->src_port = 0x00;
+    selector2_p->dst_port = 0x00;
+  }
 
-    selector2_p->selector_type = (uint8_t)SELECTOR_SECONDARY;
-    selector2_p->hashkey = hashkey;
-    *cn_bind_node_p_p = cn_bind_node_entry_p;  /* Selectors are not yet added to hash table */
-    selector2_p->cnbind_node_p = cn_bind_node_entry_p;
-    selector_p->other_selector_p  = selector2_p;
-    selector2_p->other_selector_p = selector_p;
+  hashmask = nsc_no_of_cnbind_table_buckets_g;
+  /* Fields in this selector are extracted in reverse order */
+  hashkey  = NSC_COMPUTE_HASH_CNBIND_ENTRY(selector2_p->src_ip,selector2_p->dst_ip,
+                                           selector2_p->src_port,selector2_p->dst_port,
+                                           selector2_p->protocol,
+                                           selector2_p->ethernet_type,
+                                           hashmask
+                                         );
 
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"selector_type : %d",selector2_p->selector_type);
-    
+  selector2_p->selector_type = (uint8_t)SELECTOR_SECONDARY;
+  selector2_p->hashkey = hashkey;
+  *cn_bind_node_p_p = cn_bind_node_entry_p;  /* Selectors are not yet added to hash table */
+  selector2_p->cnbind_node_p = cn_bind_node_entry_p;
+  selector_p->other_selector_p  = selector2_p;
+  selector2_p->other_selector_p = selector_p;
+
+  if(selector_p->zone == ZONE_LEFT)
+    selector2_p->zone = ZONE_RIGHT;
+  else if(selector_p->zone == ZONE_RIGHT)
+    selector2_p->zone = ZONE_LEFT;
+  else
+    selector2_p->zone = ZONE_LESS;
+
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"selector_type : %d",selector2_p->selector_type);
+   
+  if(selector_p->zone == ZONE_LESS) 
+  {
     CNTLR_LOCK_TAKE(global_mac_lock);
     local_in_mac[5]++;
     if(local_in_mac[5] == 0)
@@ -253,10 +282,10 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_mac = %x",cn_bind_node_entry_p->local_out_mac[ii]);
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_mac = %x",cn_bind_node_entry_p->local_in_mac[ii]);
     }
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"No existing selector is matched.Both the Selectors are filled but not added to the hash table");
-
-    return NSC_CONNECTION_BIND_ENTRY_CREATED;
   }
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"No existing selector is matched.Both the Selectors are filled but not added to the hash table");
+
+  return NSC_CONNECTION_BIND_ENTRY_CREATED;
 }
 /*****************************************************************************************************************************
 Function: nsc_add_selectors
@@ -366,14 +395,10 @@ int32_t nsc_extract_packet_fields(struct ofl_packet_in* pkt_in,struct nsc_select
   uint32_t  ii,ipv4_hdr_len;
   uint32_t  temp;
   uint16_t  offset;
-  //uint8_t   index; 
-
   int32_t   retval = OF_SUCCESS;
 
   if(pkt_in->packet_length < 34)  /* packet length shall atleast be that of (IP Header + MAC header) */
     return OF_FAILURE;
-
-  //index = 0;
 
   offset = OF_CNTLR_ETHERNET_TYPE_OFFSET;
   temp = (ntohl(*(unsigned int*)(pkt_data + offset)));
@@ -550,11 +575,11 @@ void tsc_mark_cn_bind_entry_as_stale(struct mchash_table* l2_connection_to_nsinf
     if((--(selector_p->cnbind_node_p->no_of_flow_entries_deduced)) == 0)
     {
       selector_p->cnbind_node_p->stale_entry = 1;
-      printf(" \r\n Stale entry is marked");
+      //printf(" \r\n Stale entry is marked");
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Mark the cn_bind_entry as a stale entry so that it is not used further.");
     }
 
-    printf("flstodel %d",selector_p->cnbind_node_p->no_of_flow_entries_deduced);
+    //printf("flstodel %d",selector_p->cnbind_node_p->no_of_flow_entries_deduced);
     
     if(selector_p->cnbind_node_p->stale_entry == 1)
     {
@@ -567,7 +592,7 @@ void tsc_mark_cn_bind_entry_as_stale(struct mchash_table* l2_connection_to_nsinf
       if(status_b == TRUE)
       {
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "Secondary Selector entry deleted successfully from cnbind table");
-        printf(" NSMDEL 104 ");
+        //printf(" NSMDEL 104 ");
       }
       else
       {
@@ -581,7 +606,7 @@ void tsc_mark_cn_bind_entry_as_stale(struct mchash_table* l2_connection_to_nsinf
       if(status_b == TRUE)
       {
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "Primary Selector entry deleted successfully from cnbind table");
-        printf(" NSMDEL 106 ");
+        //printf(" NSMDEL 106 ");
       }
       else
       {
@@ -621,7 +646,7 @@ void tsc_nsc_cnbind_sel_free(struct rcu_head* sel_p)
     if(retval == MEMPOOL_SUCCESS)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "cnbind entry memory block released succussfully!.");
-      printf("\r\ncnbind entry is released");
+      printf("\r\ncnbind entry released");
     }
     else
     {
@@ -682,4 +707,24 @@ uint32_t nsc_compute_hash_repository_table_3(uint16_t serviceport,
  return hashkey;
 }
 /*************************************************************************************************************************************************************************/
+#if 0
+uint32_t tsc_nsc_find_zone(uint32_t src_ip)
+{
+  uint32_t zone = ZONE_LESS;
 
+  if(src_ip == 0x0c0c0c05)
+  {
+    zone = ZONE_LEFT; 
+  }  
+  else if(src_ip == 0x0c0c0c06)
+  {    
+    zone = ZONE_RIGHT;
+  }
+  
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "src_ip = %x",src_ip);
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "zone   = %d",zone);
+
+  return zone;
+}    
+#endif
+/*************************************************************************************************************************************************************************/    

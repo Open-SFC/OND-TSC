@@ -48,6 +48,7 @@
 #define PAD_CACHE_LINE uchar8_t cachelinepad[0] CACHE_ALIGN;
 
 #include "tsc_nsc_core.h" 
+#include "tsc_bintree.h"
 
 struct tsc_ofver_plugin_iface
 {
@@ -92,8 +93,17 @@ enum tsc_pkt_origin_e
 {
   VM_APPLN,
   VM_NS,
+  VM_NS_IN,
+  VM_NS_OUT,
   NW_UNICAST_SIDE,
-  NW_BROADCAST_SIDE
+  NW_BROADCAST_SIDE,
+};
+
+enum tsc_zone_e
+{
+  ZONE_LESS,
+  ZONE_LEFT,
+  ZONE_RIGHT,
 };
 
 #define PSP_CACHE_LINE_SIZE     64
@@ -140,7 +150,7 @@ struct nschain_repository_entry
  
   uint8_t   copy_local_mac_addresses_b;
   uint8_t   copy_original_mac_addresses_b;
-
+  uint32_t  zone;
   /* usedin proactive flow pushing to all the switches. */
   uint8_t   vm_and_service1_not_on_same_switch;
 
@@ -241,11 +251,13 @@ tsc_classify_table_miss_entry_pkt_rcvd(uint64_t  datapath_handle,
 int32_t
 tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(uint64_t dp_handle,
                                                   struct ofl_packet_in* pkt_in,
+                                                  struct of_msg* msg,
                                                   uint32_t in_port_id,
                                                   uint64_t metadata);
 
 int32_t tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd(uint64_t dp_handle,
                                                          struct ofl_packet_in* pkt_in,
+                                                         struct of_msg* msg,
                                                          uint32_t in_port_id,
                                                          uint64_t metadata);
 
@@ -255,17 +267,20 @@ int32_t tsc_add_t3_proactive_flow_for_vm(uint64_t crm_port_handle,
 
 int32_t tsc_unicast_table_3_miss_entry_pkt_rcvd(uint64_t dp_handle,
                                                 struct ofl_packet_in* pkt_in,
+                                                struct of_msg* msg,                     
                                                 uint64_t metadata,
                                                 uint32_t in_port,
                                                 uint32_t tun_src_ip);
 
 int32_t tsc_broadcast_outbound_table_4_miss_entry_pkt_rcvd(uint64_t dp_handle,
                                                            struct ofl_packet_in* pkt_in,
+                                                           struct of_msg* msg,
                                                            uint64_t metadata,
                                                            uint32_t in_port_id);
 
 int32_t tsc_broadcast_inbound_table_5_miss_entry_pkt_rcvd(uint64_t dp_handle,
                                                           struct ofl_packet_in* pkt_in,
+                                                          struct of_msg* msg,
                                                           uint64_t metadata,
                                                           uint32_t in_port_id,
                                                           uint32_t tun_src_ip);
@@ -342,4 +357,6 @@ int32_t tsc_delete_table_4_flow_entries(uint8_t crm_port_type,uint64_t crm_port_
 int32_t tsc_delete_table_5_flow_entries(uint8_t crm_port_type,uint64_t crm_port_handle,uint64_t dp_handle);
 
 int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_repository_entry_p);
+int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry* nschain_repository_entry_p);
+int32_t tsc_send_all_flows_to_all_tsas_zone_right(struct nschain_repository_entry* nschain_repository_entry_p);
 #endif /*__TSC_CONTROLLER__*/

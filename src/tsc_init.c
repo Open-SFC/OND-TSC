@@ -29,8 +29,7 @@
 #include "cntlr_transprt.h"
 #include "cntlr_event.h"
 #include "dprmldef.h"
-#include "dc_vs_ttp.h"
-
+#include "ttprmgdef.h"
 #include "crmapi.h"
 #include "crmldef.h"
 #include "crm_vn_api.h"
@@ -45,7 +44,53 @@
 #include "tsc_nvm_vxlan.h"
 /* INCLUDE_END **************************************************************/
 
+/* dc_vs_ttp: Following macros for Table type pattern. */
+
+#define CNTLR_TSC_TTP_TABLES_CNT 6
+
+/* Table id0: Table 0 */
+#define CNTLR_DC_VS_TTP_ID0_NAME "CLASSIFICATION-TABLE-0"
+#define CNTLR_DC_VS_TTP_ID0_COLUMNS 0
+#define CNTLR_DC_VS_TTP_ID0_ROWS    0
+
+/* Table id1: Table 1 */
+#define CNTLR_DC_VS_TTP_ID1_NAME "NS-TABLE-1"
+#define CNTLR_DC_VS_TTP_ID1_COLUMNS 0
+#define CNTLR_DC_VS_TTP_ID1_ROWS    0
+
+/* Table id2: Table 2 */
+#define CNTLR_DC_VS_TTP_ID2_NAME "NS-TABLE-2"
+#define CNTLR_DC_VS_TTP_ID2_COLUMNS 0
+#define CNTLR_DC_VS_TTP_ID2_ROWS    0
+
+/* Table id3: Table 3 */
+#define CNTLR_DC_VS_TTP_ID3_NAME "UNICAST-TABLE-3"
+#define CNTLR_DC_VS_TTP_ID3_COLUMNS 0
+#define CNTLR_DC_VS_TTP_ID3_ROWS    0
+
+/* Table id4: Table 4 */
+#define CNTLR_DC_VS_TTP_ID4_NAME "BRDOUT-TABLE-4"
+#define CNTLR_DC_VS_TTP_ID4_COLUMNS 0
+#define CNTLR_DC_VS_TTP_ID4_ROWS    0
+
+/* Table id5: Table 5 */
+#define CNTLR_DC_VS_TTP_ID5_NAME "BRDIN-TABLE-5"
+#define CNTLR_DC_VS_TTP_ID5_COLUMNS 0
+#define CNTLR_DC_VS_TTP_ID5_ROWS    0
+
+#define  DC_VS_TTP_CLASSIFICATION_TABLE_ID  0
+#define  DC_VS_TTP_NS1_TABLE_ID             1
+#define  DC_VS_TTP_NS2_TABLE_ID             2
+#define  DC_VS_TTP_UNICAST_TABLE_ID         3
+#define  DC_VS_TTP_BRDOUT_TABLE_ID          4
+#define  DC_VS_TTP_BRDIN_TABLE_ID           5
+
+extern struct tsc_bintree_node* tsc_bintree_root;
+
 extern struct tsc_nvm_module_interface tsc_nvm_modules[SUPPORTED_NW_TYPE_MAX + 1];
+
+char vm_ipaddr[18] = {};
+char vm_zone[10]   = {};
 
 struct   dprm_distributed_forwarding_domain_info tsc_domain_info;
 uint64_t tsc_domain_handle;
@@ -83,7 +128,10 @@ int32_t tsc_handle_crm_port_deletion(uint32_t notification_type,
                                      void     *callback_arg1,
                                      void     *callback_arg2);
 
+int32_t tsc_get_zone_info(void);
 int32_t tsc_init_of_plugins(uint64_t tsc_domain_handle);
+int32_t tsc_uninit_of_plugins(uint64_t tsc_domain_handle);
+int32_t tsc_app_tbls_reg(void);
 /********************************************************************************************************************
 Function Name: tsc_module_init
 Input  Parameters: 
@@ -99,33 +147,52 @@ Description:
 ********************************************************************************************************************/
 int32_t tsc_module_init()
 {
-  int32_t   status = OF_SUCCESS;
+  uint64_t ttprm_handle;
+  int32_t  ret_val = OF_SUCCESS;
 
-  dc_vs_ttp_init();
-
-  status = dprm_register_forwarding_domain_notifications(DPRM_DOMAIN_ALL_NOTIFICATIONS,
-                                                         tsc_domain_event_callback,
-                                                         NULL, NULL);
-  if(status != OF_SUCCESS)
+  /* ttprm registration */
+  ret_val = ttprm_register("DATA_CENTER_VIRTUAL_SWITCH_TTP", &ttprm_handle);
+  if(ret_val != CNTLR_TTP_SUCCESS)
   {
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Registering callback to forward domain failed....");
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR, "Failed to register DCVS-TTP with ttprm.");
+    return OF_FAILURE;
+  }
+  /* TSC  main ttp tables regisration with ttprm**/
+  ret_val = tsc_app_tbls_reg();
+  if(ret_val != CNTLR_TTP_SUCCESS)
+  {
+    OF_LOG_MSG(OF_LOG_SAMPLE_APP, OF_LOG_ERROR, "Failed to register TSC-TTP Tables with ttprm");
     return OF_FAILURE;
   }
 
-  /* Add TSC_DOMAIN under dc_vs_ttp to OF Controller infrastructure for Flow Control Application */
- 
+/* Add TSC_DOMAIN under dc_vs_ttp to OF Controller infrastructure for Flow Control Application */
+
   strcpy(tsc_domain_info.name,"TSC_DOMAIN");
   strcpy(tsc_domain_info.expected_subject_name_for_authentication,"tsc_domain@abc.com");
   strcpy(tsc_domain_info.ttp_name,"DATA_CENTER_VIRTUAL_SWITCH_TTP");
-
-  status = dprm_create_distributed_forwarding_domain(&tsc_domain_info,&tsc_domain_handle);
-  if(status != DPRM_SUCCESS)
+  tsc_domain_info.number_of_tables = 6;
+  
+  ret_val = dprm_register_forwarding_domain_notifications(DPRM_DOMAIN_ALL_NOTIFICATIONS,
+                                                          tsc_domain_event_callback,
+                                                          &tsc_domain_info, NULL);
+  if(ret_val != OF_SUCCESS)
   {
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to Add TSC_DOMAIN to the OF Controller infrastructure: status=%d",status);
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Registering callback to forward domain TSC_DOMAIN failed....");
+    return OF_FAILURE;
+  }
+
+ /* Add TSC_DOMAIN under dc_vs_ttp to OF Controller infrastructure for Flow Control Application */
+ 
+  ret_val = dprm_create_distributed_forwarding_domain(&tsc_domain_info,&tsc_domain_handle);
+  if(ret_val != DPRM_SUCCESS)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to Add TSC_DOMAIN to the OF Controller infrastructure");
     return OF_FAILURE;
   }
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "Added TSC_DOMAIN to the OF Controller infrastructure: domain handle=%llx ",tsc_domain_handle);
   
+  tsc_get_zone_info();
+
   return OF_SUCCESS;
 }
 /**************************************************************************************************************************
@@ -236,7 +303,7 @@ void tsc_domain_event_callback(uint32_t notification_type,
       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"NSC module initialization is successful");
       
       //nsrm_test();
-      
+     
       break;
     }
   }
@@ -266,6 +333,12 @@ int32_t tsc_init_of_plugins(uint64_t tsc_domain_handle)
     return OF_SUCCESS;
   }
 }
+/******************************************************************************************************/
+int32_t tsc_uninit_of_plugins(uint64_t tsc_domain_handle)
+{
+  tsc_ofplugin_v1_3_uninit(tsc_domain_handle);
+  return OF_SUCCESS;
+}    
 /*******************************************************************************************************
 Function Name: crm_port_notifications_cbk
 Input Parameters:
@@ -570,7 +643,8 @@ int32_t tsc_handle_crm_port_addition(uint32_t notification_type,
     return OF_FAILURE;
   }
 
-  if((notification_data.crm_port_type == VM_PORT) || (notification_data.crm_port_type == VMNS_PORT))
+  if((notification_data.crm_port_type == VM_PORT)      || (notification_data.crm_port_type == VMNS_PORT) ||
+     (notification_data.crm_port_type == VMNS_IN_PORT) || (notification_data.crm_port_type == VMNS_OUT_PORT)) 
   {
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Calling nvm_module_create_vmport_views()");  
     retval = tsc_nvm_modules[nw_type].nvm_module_create_vmport_views(crm_port_handle,
@@ -676,7 +750,8 @@ int32_t tsc_handle_crm_port_deletion(uint32_t notification_type,
     return OF_FAILURE;
   }
 
-  if((notification_data.crm_port_type == VM_PORT) || (notification_data.crm_port_type == VMNS_PORT))
+  if((notification_data.crm_port_type == VM_PORT) || (notification_data.crm_port_type == VMNS_PORT) ||
+     (notification_data.crm_port_type == VMNS_IN_PORT) || (notification_data.crm_port_type == VMNS_OUT_PORT))
   {
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Calling nvm_module_delete_vmport_views()");
     retval = tsc_nvm_modules[nw_type].nvm_module_delete_vmport_views(crm_port_handle,
@@ -708,7 +783,8 @@ int32_t tsc_handle_crm_port_deletion(uint32_t notification_type,
       table_id = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
       tsc_ofplugin_v1_3_del_flows_from_table_1_2(notification_data.dp_handle,&notification_data.new_port_id,table_id);
     }
-    else if(notification_data.crm_port_type == VMNS_PORT)
+    else if((notification_data.crm_port_type == VMNS_PORT) || (notification_data.crm_port_type == VMNS_IN_PORT) ||
+                                                              (notification_data.crm_port_type == VMNS_OUT_PORT))
     {
       //printf("\r\nCalling tsc_delete_nsc_tables_1_2_flows_for_service_vm_deleted()");
       retval = tsc_delete_nsc_tables_1_2_flows_for_service_vm_deleted(notification_data.crm_vn_handle,crm_port_handle);
@@ -723,7 +799,7 @@ int32_t tsc_handle_crm_port_deletion(uint32_t notification_type,
         printf("\r\nFailed to delete all or some of the matching Table_1 and Table_2 flow entries");
       }
     }
-    //tsc_delete_table_3_flow_entries(notification_data.crm_port_type,crm_port_handle,notification_data.dp_handle); 
+    tsc_delete_table_3_flow_entries(notification_data.crm_port_type,crm_port_handle,notification_data.dp_handle); 
   }
   else
   {
@@ -756,6 +832,127 @@ int32_t tsc_handle_crm_port_deletion(uint32_t notification_type,
   }
   return retval;
 }
+/**************************************************************************************************************************
+ * Function Name:tsc_app_tbls
+ * Description:  Registers TSC tables with ttprm
+ * ***************************************************************************************************************************/
+int32_t tsc_app_tbls_reg(void)
+{
+  int32_t ret_val = CNTLR_TTP_SUCCESS;
+  uint32_t table_id;
+  struct  ttprm_table_entry *ttp_table_node_p = NULL;
+
+  OF_LOG_MSG(OF_LOG_TTP, OF_LOG_ERROR, "entered");
+
+  for(table_id=0; table_id < CNTLR_TSC_TTP_TABLES_CNT; table_id++)
+  {
+    /** Create memory for the table */
+    ret_val = alloc_ttp_tbl_mem_block(&ttp_table_node_p);
+    if(ret_val!=CNTLR_TTP_SUCCESS)
+    {
+      OF_LOG_MSG(OF_LOG_SAMPLE_APP, OF_LOG_ERROR, "tsc ttp table allocation failed!.");
+      ret_val = CNTLR_TTP_FAILURE;
+      break;
+    }
+
+    switch(table_id)
+    {
+      /* Table id 0:In Port Classification Table */
+      case DC_VS_TTP_CLASSIFICATION_TABLE_ID:
+           ttp_table_node_p->table_id = DC_VS_TTP_CLASSIFICATION_TABLE_ID;
+           strcpy(ttp_table_node_p->table_name,CNTLR_DC_VS_TTP_ID0_NAME);
+           ttp_table_node_p->max_columns    = CNTLR_DC_VS_TTP_ID0_COLUMNS;
+           ttp_table_node_p->max_rows       = CNTLR_DC_VS_TTP_ID0_ROWS;
+           ttp_table_node_p->is_wc_present=FALSE;
+           ttp_table_node_p->is_lpm_present=FALSE;
+           ttp_table_node_p->no_of_wcs=0;
+           ttp_table_node_p->no_of_lpms=0;
+
+           break;
+
+      /*Table id1: NS1 table */
+      case DC_VS_TTP_NS1_TABLE_ID:
+           ttp_table_node_p->table_id = DC_VS_TTP_NS1_TABLE_ID;
+           strcpy(ttp_table_node_p->table_name,CNTLR_DC_VS_TTP_ID1_NAME);
+
+           ttp_table_node_p->max_columns    = CNTLR_DC_VS_TTP_ID1_COLUMNS;
+           ttp_table_node_p->max_rows       = CNTLR_DC_VS_TTP_ID1_ROWS;
+
+           ttp_table_node_p->is_wc_present=FALSE;
+           ttp_table_node_p->is_lpm_present=FALSE;
+           ttp_table_node_p->no_of_wcs=0;
+           ttp_table_node_p->no_of_lpms=0;
+
+           break;
+      
+      /* Table id2: NS2 Table */
+      case DC_VS_TTP_NS2_TABLE_ID:
+           ttp_table_node_p->table_id = DC_VS_TTP_NS2_TABLE_ID;
+           strcpy(ttp_table_node_p->table_name,CNTLR_DC_VS_TTP_ID2_NAME);
+
+           ttp_table_node_p->max_columns    = CNTLR_DC_VS_TTP_ID2_COLUMNS;
+           ttp_table_node_p->max_rows       = CNTLR_DC_VS_TTP_ID2_ROWS;
+
+           ttp_table_node_p->is_wc_present=FALSE;
+           ttp_table_node_p->is_lpm_present=FALSE;
+           ttp_table_node_p->no_of_wcs  =0;
+           ttp_table_node_p->no_of_lpms =0;
+
+           break;
+
+      case DC_VS_TTP_UNICAST_TABLE_ID:
+           ttp_table_node_p->table_id = DC_VS_TTP_UNICAST_TABLE_ID;
+           strcpy(ttp_table_node_p->table_name,CNTLR_DC_VS_TTP_ID3_NAME);
+
+           ttp_table_node_p->max_columns    = CNTLR_DC_VS_TTP_ID3_COLUMNS;
+           ttp_table_node_p->max_rows       = CNTLR_DC_VS_TTP_ID3_ROWS;
+
+           ttp_table_node_p->is_wc_present=FALSE;
+           ttp_table_node_p->is_lpm_present=FALSE;
+           ttp_table_node_p->no_of_wcs  = 0;
+           ttp_table_node_p->no_of_lpms = 0;
+
+           break;
+          
+      case DC_VS_TTP_BRDOUT_TABLE_ID:
+           ttp_table_node_p->table_id = DC_VS_TTP_BRDOUT_TABLE_ID;
+           strcpy(ttp_table_node_p->table_name,CNTLR_DC_VS_TTP_ID4_NAME);
+
+           ttp_table_node_p->max_columns    = CNTLR_DC_VS_TTP_ID4_COLUMNS;
+           ttp_table_node_p->max_rows       = CNTLR_DC_VS_TTP_ID4_ROWS;
+
+           ttp_table_node_p->is_wc_present=FALSE;
+           ttp_table_node_p->is_lpm_present=FALSE;
+           ttp_table_node_p->no_of_wcs= 0;
+           ttp_table_node_p->no_of_lpms=0;
+
+           break;
+
+      case DC_VS_TTP_BRDIN_TABLE_ID:
+           ttp_table_node_p->table_id = DC_VS_TTP_BRDIN_TABLE_ID;
+           strcpy(ttp_table_node_p->table_name,CNTLR_DC_VS_TTP_ID5_NAME);
+
+           ttp_table_node_p->max_columns  = CNTLR_DC_VS_TTP_ID5_COLUMNS;
+           ttp_table_node_p->max_rows     = CNTLR_DC_VS_TTP_ID5_ROWS;
+
+           ttp_table_node_p->is_wc_present=FALSE;
+           ttp_table_node_p->is_lpm_present=FALSE;
+           ttp_table_node_p->no_of_wcs=0;
+           ttp_table_node_p->no_of_lpms=0;
+
+           break;
+    }
+
+    ret_val = add_table_to_ttprm("DATA_CENTER_VIRTUAL_SWITCH_TTP", &ttp_table_node_p);
+    if(ret_val != CNTLR_TTP_SUCCESS)
+    {
+        OF_LOG_MSG(OF_LOG_SAMPLE_APP, OF_LOG_ERROR, "add table to ttprm  failed.");
+        ret_val = CNTLR_TTP_FAILURE;
+        break;
+    }
+  }
+  return ret_val;
+}
 /***************************************************************************************************************************
 Function Name:cntlr_shared_lib_init
 Description:
@@ -766,7 +963,6 @@ Description:
 void cntlr_shared_lib_init(void)
 {
   int32_t retval;
- 
   do
   {
     retval =  tsc_module_init();  
@@ -790,8 +986,95 @@ Description:
 ***************************************************************************************************************************/
 void cntlr_shared_lib_deinit()
 {
-  /* TBD */
-
-
+  nsrm_uninit();
+  psm_module_uninit();  
+  crm_deregister_vn_notifications(CRM_VN_ALL_NOTIFICATIONS,crm_vn_notifications_cbk);  
+  crm_deregister_port_notifications(CRM_PORT_ALL_NOTIFICATIONS,crm_port_notifications_cbk);
+  crm_uninit();
+  tsc_uninit_of_plugins(tsc_domain_handle);
+  nsc_uninit();
+  printf("\r\n TSC Application is de-initialized");
 }
 /***************************************************************************************************************************/
+/* Reads the Application VM zone information from the file /home/user/tsc.conf                                             */    
+/***************************************************************************************************************************/
+int32_t tsc_get_zone_info(void)
+{
+  char line[150];
+  char *token       = NULL;
+  FILE *fp;
+  uint32_t src_ip,zone,ii;
+ 
+  fp = fopen("/usr/local/ondir_platform/2.0/lib/apps/tsc.conf","rt");
+  if(fp == NULL)
+  {
+    printf("\r\n tsc.conf file is not found. Assuming all the Application VMs are ZONE_LESS .");
+    return OF_SUCCESS;
+  }
+  printf("\r\n");
+  
+  tsc_bintree_root = NULL;
+  tsc_bintree_root = tsc_bintree_insert(tsc_bintree_root,0,0);
+
+  while(fgets(line, 150, fp) != NULL)
+  {
+    if((line[0] == '#') || ((line[0] == '/') && (line[1] == '*')))
+      continue;
+    if(strlen(line) == 1) /* skip blank lines and comments */
+      continue;
+
+    token = (char *)strtok(line,"=");
+
+    if(!strncmp(token,"vmip",strlen("vmip")))
+    {
+      //printf(" \r\n token   = %s",token);
+      token = (char *)strtok(NULL," "); 
+      strncpy(vm_ipaddr,token,strlen(token));
+      //printf(" vm_ipaddr = %s",vm_ipaddr); 
+      src_ip = inet_network(vm_ipaddr);
+    }
+    else
+    {
+      continue;
+    }
+    token = (char *)strtok(NULL,"="); 
+    if(!(strncmp(token,"zone",strlen("zone"))))
+    {
+      token = (char *)strtok(NULL,"\t");
+      strncpy(vm_zone,token,strlen(token));
+      if(!(strncmp(vm_zone,"left",strlen("left"))))
+        zone = ZONE_LEFT;
+      else if(!(strncmp(vm_zone,"right",strlen("right"))))
+        zone = ZONE_RIGHT;
+      else
+        zone = ZONE_LESS;
+    }
+    else
+    {
+      continue;
+    }  
+    printf("\r\n vm_ip   = %x",src_ip);
+    printf(" zone    = %x",zone);
+    /* Add to Binary tree */
+  
+    tsc_bintree_insert(tsc_bintree_root,src_ip,zone);
+
+    for(ii=0;ii<18;ii++)
+       vm_ipaddr[ii] = 0;
+    for(ii=0;ii<6;ii++)
+       vm_zone[ii] = 0;
+  }
+  fclose(fp);
+  tsc_bintree_list(tsc_bintree_root);
+  return OF_SUCCESS;
+}
+/********************************************************************************************************************************/
+
+
+
+
+
+
+
+
+

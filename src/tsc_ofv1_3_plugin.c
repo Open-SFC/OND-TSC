@@ -103,14 +103,14 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
   do
   {
     #if 1    
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_CLASSIFY_TABLE_ID_0,
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_CLASSIFY_TABLE_ID_0,
                                                    OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_table_0_miss_entry_pkt_rcvd,
                                                    (void *)(long)TSC_APP_CLASSIFY_TABLE_ID_0,NULL);
 
     #endif
 
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,
                                                    OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_table_1_miss_entry_pkt_rcvd,
                                                    (void *)(long)TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,NULL);
@@ -120,7 +120,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
       break;
     }
 
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,
                                                    OF_ASYNC_MSG_FLOW_REMOVED_EVENT,TSC_APP_PKT_FLOW_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_nschain_table_1_flow_entry_removed_rcvd,
                                                    (void *)(long)TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,NULL);
@@ -130,7 +130,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
       break;
     }
 
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,
                                                    OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_table_2_miss_entry_pkt_rcvd,
                                                    (void *)(long)TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,NULL);
@@ -140,7 +140,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
       break;
     }
 
-      status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,
+      status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,
                                                      OF_ASYNC_MSG_FLOW_REMOVED_EVENT,TSC_APP_PKT_FLOW_IN_PRIORITY,
                                                      tsc_ofplugin_v1_3_nschain_table_2_flow_entry_removed_rcvd,
                                                      (void *)(long)TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,NULL);
@@ -150,7 +150,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
       break;
     }
 
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_UNICAST_TABLE_ID_3, 
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_UNICAST_TABLE_ID_3, 
                                                    OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_table_3_miss_entry_pkt_rcvd,
                                                    (void *)(long)TSC_APP_UNICAST_TABLE_ID_3,NULL);  
@@ -160,7 +160,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
       break;
     }
 
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_UNICAST_TABLE_ID_3,
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_UNICAST_TABLE_ID_3,
                                                    OF_ASYNC_MSG_FLOW_REMOVED_EVENT,TSC_APP_PKT_FLOW_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_fc_table_flow_entry_removed_rcvd,
                                                    (void *)(long)TSC_APP_UNICAST_TABLE_ID_3,NULL);
@@ -170,7 +170,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
       break;
     }
 
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_BROADCAST_OUTBOUND_TABLE_ID_4,
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_BROADCAST_OUTBOUND_TABLE_ID_4,
                                                    OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_table_4_miss_entry_pkt_rcvd,
                                                    (void *)(long)TSC_APP_BROADCAST_OUTBOUND_TABLE_ID_4,NULL);                                                           
@@ -180,7 +180,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
       break;
     }
     
-    status = of_register_asynchronous_message_hook(domain_handle, TSC_APP_BROADCAST_INBOUND_TABLE_ID_5,
+    status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_BROADCAST_INBOUND_TABLE_ID_5,
                                                    OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_table_5_miss_entry_pkt_rcvd,
                                                    (void *)(long)TSC_APP_BROADCAST_INBOUND_TABLE_ID_5,NULL);                                                           
@@ -194,7 +194,6 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
 
   if(status == OF_FAILURE)
   {
-    /* TBD no unregister API available */    
     return status;
   } 
 
@@ -215,6 +214,51 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
  
   return status;   
 }
+/****************************************************************************************************************************/
+int32_t tsc_ofplugin_v1_3_uninit(uint64_t domain_handle)
+{
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_CLASSIFY_TABLE_ID_0,
+                                          OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY
+                                         );
+                                                  
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,
+                                           OF_ASYNC_MSG_FLOW_REMOVED_EVENT,TSC_APP_PKT_FLOW_IN_PRIORITY
+                                         );
+       
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1,
+                                          OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY
+                                         );  
+ 
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,
+                                           OF_ASYNC_MSG_FLOW_REMOVED_EVENT,TSC_APP_PKT_FLOW_IN_PRIORITY
+                                         );
+
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2,
+                                           OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY
+                                         );
+ 
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_UNICAST_TABLE_ID_3,
+                                           OF_ASYNC_MSG_FLOW_REMOVED_EVENT,TSC_APP_PKT_FLOW_IN_PRIORITY
+                                         );
+
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_UNICAST_TABLE_ID_3,
+                                           OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY
+                                         );  
+
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_BROADCAST_OUTBOUND_TABLE_ID_4,
+                                           OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY
+                                         );
+ 
+  of_deregister_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_BROADCAST_INBOUND_TABLE_ID_5,
+                                           OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY
+                                         );
+  
+  cntlr_deregister_asynchronous_event_hook(domain_handle,DP_READY_EVENT,1);
+  
+  cntlr_deregister_asynchronous_event_hook(domain_handle,DP_DETACH_EVENT,1);
+ 
+  return OF_SUCCESS;
+}    
 /****************************************************************************************************************************
 Function Name:tsc_ofplugin_v1_3_dp_ready_event
 Input Parameters:
@@ -554,6 +598,7 @@ Output Parameters:
         NONE
 Description:This function adds/delete flows to classification table 0.These flows are added proactively.
             A flow for each VM port is added as and when they are added and deleted as and when they are deleted.
+            GPSYS:New VM_NS port types added. 
 ****************************************************************************************************************************/
 int32_t tsc_ofplugin_v1_3_send_flow_mod_classify_table_vmports(uint64_t dp_handle,
                                        struct tsc_ofver_plugin_iface* tsc_params_p,
@@ -561,6 +606,7 @@ int32_t tsc_ofplugin_v1_3_send_flow_mod_classify_table_vmports(uint64_t dp_handl
 {
   uint16_t msg_len;
   uint16_t vlan_id,vlan_id_mask;
+  uint16_t vlan_id_ns_in,vlan_id_ns_out;
   uint8_t  vlan_mask_req; 
   int32_t  retval;
   int32_t  status = OF_SUCCESS;
@@ -730,7 +776,8 @@ int32_t tsc_ofplugin_v1_3_send_flow_mod_classify_table_vmports(uint64_t dp_handl
        status = OF_FAILURE;
     }while(0);
   } 
-  else if(tsc_params_p->pkt_origin_e == VMNS_PORT)  
+  else if((tsc_params_p->pkt_origin_e == VMNS_PORT) || (tsc_params_p->pkt_origin_e == VMNS_IN_PORT)
+                                                    || (tsc_params_p->pkt_origin_e == VMNS_OUT_PORT))  
   { 
     do
     {
@@ -768,37 +815,63 @@ int32_t tsc_ofplugin_v1_3_send_flow_mod_classify_table_vmports(uint64_t dp_handl
     #ifdef TSC_L2_SERVICE_CHAINING_ENABLE
         next_table_id = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
     #endif
-
-        retval = tsc_add_flwmod_1_3_msg_table_0(dp_handle,
-                                               msg_len,
-                                               2,
-                                               &(tsc_params_p->in_port_id),
-                                               TSC_PKT_UNICAST_VMNS_NW,
-                                               &(tsc_params_p->vlan_id_out),vlan_mask_req,&vlan_id_mask,
-                                               tsc_params_p->metadata,
-                                               tsc_params_p->metadata_mask,
-                                               next_table_id);
-        if(retval != OF_SUCCESS)
+       
+        if(tsc_params_p->pkt_origin_e == VMNS_PORT)
         {
-          status = OF_FAILURE;
-          break;
+          vlan_id_ns_in  = tsc_params_p->vlan_id_in;
+          vlan_id_ns_out = tsc_params_p->vlan_id_out;
+
+          retval = tsc_add_flwmod_1_3_msg_table_0(dp_handle,
+                                                  msg_len,
+                                                  2,
+                                                  &(tsc_params_p->in_port_id),
+                                                  TSC_PKT_UNICAST_VMNS_NW,
+                                                  &(vlan_id_ns_out),vlan_mask_req,&vlan_id_mask,
+                                                  tsc_params_p->metadata,
+                                                  tsc_params_p->metadata_mask,
+                                                  next_table_id);
+          if(retval != OF_SUCCESS)
+          {
+            status = OF_FAILURE;
+            break;
+          }
+
+          retval = tsc_add_flwmod_1_3_msg_table_0(dp_handle,
+                                                  msg_len,
+                                                  2,
+                                                  &(tsc_params_p->in_port_id),
+                                                  TSC_PKT_UNICAST_VMNS_NW,
+                                                  &(vlan_id_ns_in),vlan_mask_req,&vlan_id_mask,
+                                                  tsc_params_p->metadata,
+                                                  tsc_params_p->metadata_mask,
+                                                  next_table_id);
+          if(retval != OF_SUCCESS)
+          {
+            status = OF_FAILURE;
+            break;
+          }
+        }
+        else
+        {
+          vlan_id_ns_in  = 0;
+          vlan_id_ns_out = 0;
+          /* Only one flow each is added for VM_NS_IN and VM_NS_OUT ports */
+          retval = tsc_add_flwmod_1_3_msg_table_0(dp_handle,
+                                                  msg_len,
+                                                  2,
+                                                  &(tsc_params_p->in_port_id),
+                                                  TSC_PKT_UNICAST_VMNS_NW,
+                                                  &(vlan_id_ns_out),vlan_mask_req,&vlan_id_mask,
+                                                  tsc_params_p->metadata,
+                                                  tsc_params_p->metadata_mask,
+                                                  next_table_id);
+          if(retval != OF_SUCCESS)
+          {
+            status = OF_FAILURE;
+            break;
+          }
         }
 
-        retval = tsc_add_flwmod_1_3_msg_table_0(dp_handle,
-                                                msg_len,
-                                                2,
-                                                &(tsc_params_p->in_port_id),
-                                                TSC_PKT_UNICAST_VMNS_NW,
-                                                &(tsc_params_p->vlan_id_in),vlan_mask_req,&vlan_id_mask,
-                                                tsc_params_p->metadata,
-                                                tsc_params_p->metadata_mask,
-                                                next_table_id);
-        if(retval != OF_SUCCESS)
-        {
-          status = OF_FAILURE;
-          break;
-        }
-      
         retval = tsc_add_flwmod_1_3_msg_table_0(dp_handle,
                                                 msg_len,
                                                 3,
@@ -1795,7 +1868,9 @@ tsc_ofplugin_v1_3_table_0_miss_entry_pkt_rcvd(int64_t  controller_handle,
                                             void*     cbk_arg1,
                                             void*     cbk_arg2)
 {
-  return OF_SUCCESS;
+   if(msg != NULL)
+     msg->desc.free_cbk(msg);
+   return OF_ASYNC_MSG_CONSUMED;
 }
 /*************************************TABLE_1**************************************************/
 /* Handling miss_entry for Table 1 TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1 */
@@ -1849,6 +1924,7 @@ tsc_ofplugin_v1_3_table_1_miss_entry_pkt_rcvd(int64_t controller_handle,
 
     retval = tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(datapath_handle,
                                                                 pkt_in,
+                                                                msg,
                                                                 in_port_id,
                                                                 metadata);
     if(retval == OF_FAILURE)
@@ -1863,10 +1939,8 @@ tsc_ofplugin_v1_3_table_1_miss_entry_pkt_rcvd(int64_t controller_handle,
   {
     if(msg != NULL)
        msg->desc.free_cbk(msg);
-    return OF_ASYNC_MSG_CONSUMED;
   }
-
-  return status;
+  return OF_ASYNC_MSG_CONSUMED;
 }
 int32_t tsc_add_flwmod_1_3_msg_table_1(uint64_t dp_handle,
                                        struct   nschain_repository_entry* out_bound_nschain_repository_entry_p
@@ -1950,25 +2024,10 @@ int32_t tsc_add_flwmod_1_3_msg_table_1(uint64_t dp_handle,
 
     /* MF1: set match field Input Port id */
     retval = of_set_in_port(msg,&(out_bound_nschain_repository_entry_p->in_port_id));
-#if 0    
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set in port field failed,err = %d",retval);
-      status = OF_FAILURE;
-      break;      
-    }
-#endif
+    
     /* MF2: set match field Metadata */
     retval = of_set_meta_data(msg,&(out_bound_nschain_repository_entry_p->metadata),TRUE,
                                   &(out_bound_nschain_repository_entry_p->metadata_mask));
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set in Metadata field failed,err = %d",retval);
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
 
     if(out_bound_nschain_repository_entry_p->match_vlan_id != 0)
     {
@@ -1976,119 +2035,29 @@ int32_t tsc_add_flwmod_1_3_msg_table_1(uint64_t dp_handle,
       out_bound_nschain_repository_entry_p->match_vlan_id = ((out_bound_nschain_repository_entry_p->match_vlan_id) | 0x1000); 
    
       retval = of_set_vlan_id(msg,&(out_bound_nschain_repository_entry_p->match_vlan_id),FALSE,0);
-#if 0
-      if(retval != OFU_SET_FIELD_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set vlan id field failed,err = %d",retval);
-        status = OF_FAILURE;
-        break;  
-      }
-#endif      
     }
 
     retval = of_set_ether_type(msg,&eth_type);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)   
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set IPv4 src field failed,err = %d",retval);
-      status = OF_FAILURE;
-      break;
-    }
-#endif
+    
     /* Set packet fields as match fields */    
     retval = of_set_ipv4_destination(msg,&out_bound_nschain_repository_entry_p->selector.dst_ip,FALSE,0);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set destination ip match field");
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
-
     retval = of_set_ipv4_source(msg,&out_bound_nschain_repository_entry_p->selector.src_ip,FALSE,0);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set source ip match field");
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
-
     retval = of_set_protocol(msg,&out_bound_nschain_repository_entry_p->selector.protocol);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set ip protocol match field ");
-      status = OF_FAILURE;
-      break;
-    }
-#endif
+    
     if(out_bound_nschain_repository_entry_p->selector.protocol == OF_IPPROTO_TCP)
     {
       retval = of_set_tcp_source_port(msg,&out_bound_nschain_repository_entry_p->selector.src_port);
-#if 0     
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set tcp source port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
       retval = of_set_tcp_destination_port(msg,&out_bound_nschain_repository_entry_p->selector.dst_port);
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set tcp destination port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
     else if (out_bound_nschain_repository_entry_p->selector.protocol == OF_IPPROTO_UDP)
     {
       retval = of_set_udp_source_port(msg,&out_bound_nschain_repository_entry_p->selector.src_port);
-#if 0      
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set tcp source port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
-
       retval = of_set_udp_destination_port(msg,&out_bound_nschain_repository_entry_p->selector.dst_port);
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set udp destination port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
     else if(out_bound_nschain_repository_entry_p->selector.protocol == OF_IPPROTO_ICMP)
     {
       retval = of_set_icmpv4_type(msg,&(out_bound_nschain_repository_entry_p->selector.icmp_type));
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set icmp type match field");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
-      
       retval = of_set_icmpv4_code(msg,&(out_bound_nschain_repository_entry_p->selector.icmp_code));
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set icmp code match field");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
     
     /* match_start_loc_p points to the first match field input_port_id */
@@ -2114,26 +2083,10 @@ int32_t tsc_add_flwmod_1_3_msg_table_1(uint64_t dp_handle,
           OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_mac = %x",out_bound_nschain_repository_entry_p->local_in_mac[ii]); 
         }
         retval = ofu_push_set_destination_mac_in_set_field_action(msg, (&out_bound_nschain_repository_entry_p->local_out_mac[0]));
-#if 0        
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Error in setting local destination mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
 
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Set local destination mac address");
  
         retval = ofu_push_set_source_mac_in_set_field_action(msg, &out_bound_nschain_repository_entry_p->local_in_mac[0]);
-#if 0      
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting local source mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
       
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Set local source mac address");
       }  
@@ -2141,119 +2094,49 @@ int32_t tsc_add_flwmod_1_3_msg_table_1(uint64_t dp_handle,
       if(out_bound_nschain_repository_entry_p->copy_original_mac_addresses_b == TRUE)
       {
         retval = ofu_push_set_destination_mac_in_set_field_action(msg, &out_bound_nschain_repository_entry_p->selector.dst_mac[0]);
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting original destination mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Set original destination mac address");
 
         retval = ofu_push_set_source_mac_in_set_field_action(msg, &out_bound_nschain_repository_entry_p->selector.src_mac[0]);
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting original source mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Set original source mac address");    
       }
     }
 
     if(out_bound_nschain_repository_entry_p->more_nf_b == TRUE) 
     {
-      if(out_bound_nschain_repository_entry_p->pkt_origin == VM_NS) 
+      if((out_bound_nschain_repository_entry_p->pkt_origin == VM_NS) && (out_bound_nschain_repository_entry_p->match_vlan_id != 0)) 
       {
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG," Packet origin is VM_NS");
  
         retval = ofu_push_pop_vlan_header_action(msg);
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in pop vlan err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
       }
-      retval = ofu_push_push_vlan_header_action(msg,0x8100);
-#if 0
-      if(retval != OFU_ACTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in push vlan header err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
-      out_bound_nschain_repository_entry_p->next_vlan_id = ((out_bound_nschain_repository_entry_p->next_vlan_id) | 0x1000); 
+      if(out_bound_nschain_repository_entry_p->next_vlan_id != 0)
+      {    
+        retval = ofu_push_push_vlan_header_action(msg,0x8100);
+        out_bound_nschain_repository_entry_p->next_vlan_id = ((out_bound_nschain_repository_entry_p->next_vlan_id) | 0x1000); 
 
-      retval = ofu_push_set_vlan_id_in_set_field_action(msg,&(out_bound_nschain_repository_entry_p->next_vlan_id));
-#if 0
-      if(retval != OFU_ACTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in push vlan tag err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
+        retval = ofu_push_set_vlan_id_in_set_field_action(msg,&(out_bound_nschain_repository_entry_p->next_vlan_id));
+      }  
     }  
     if(out_bound_nschain_repository_entry_p->nw_port_b == TRUE)
     {
       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Adding tun dest ip to flow:tun_dest ip = %x",out_bound_nschain_repository_entry_p->remote_switch_ip);
       retval = ofu_push_set_ipv4_tun_dst_addr_in_set_field_action(msg,&(out_bound_nschain_repository_entry_p->remote_switch_ip));
-#if 0      
-      if(retval != OFU_ACTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting Tun Dest IP err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
 
       tunnel_id    = (out_bound_nschain_repository_entry_p->metadata & 0xffffffff);
       retval = ofu_push_set_logical_port_meta_data_in_set_field_action(msg,&tunnel_id /* &(out_bound_nschain_repository_entry_p->nid)*/);
-#if 0
-      if(retval != OFU_ACTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting tun id err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
     
     if((out_bound_nschain_repository_entry_p->ns_chain_b == TRUE) && (out_bound_nschain_repository_entry_p->more_nf_b == FALSE ))
     {
-      if(out_bound_nschain_repository_entry_p->pkt_origin == VM_NS)
+      if((out_bound_nschain_repository_entry_p->pkt_origin == VM_NS) && (out_bound_nschain_repository_entry_p->match_vlan_id != 0))
       {
         retval = ofu_push_pop_vlan_header_action(msg);
-#if 0     
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in pop vlan err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
       }
     }
 
     if((out_bound_nschain_repository_entry_p->more_nf_b == TRUE) || (out_bound_nschain_repository_entry_p->ns_port_b == TRUE))
     {    
       ofu_push_output_action(msg,out_bound_nschain_repository_entry_p->out_port_no,OFPCML_NO_BUFFER);
-      
-#if 0
-      if(retval != OFU_ACTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in adding output to port action  err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
 
     if(out_bound_nschain_repository_entry_p->ns_chain_b == TRUE)
@@ -2266,14 +2149,6 @@ int32_t tsc_add_flwmod_1_3_msg_table_1(uint64_t dp_handle,
     if((out_bound_nschain_repository_entry_p->more_nf_b == FALSE) && (out_bound_nschain_repository_entry_p->ns_port_b == FALSE))
     {
       retval = ofu_push_go_to_table_instruction(msg,out_bound_nschain_repository_entry_p->next_table_id);
-#if 0    
-      if(retval != OFU_INSTRUCTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"go to table instruction failed err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      } 
-#endif      
     }
 #endif
  
@@ -2346,7 +2221,7 @@ tsc_ofplugin_v1_3_table_2_miss_entry_pkt_rcvd(int64_t   controller_handle,
     }
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, " PKT-IN METADATA = %llx",metadata);
 
-    retval = tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd(datapath_handle,pkt_in,in_port_id,metadata);
+    retval = tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd(datapath_handle,pkt_in,msg,in_port_id,metadata);
     if(retval == OF_FAILURE)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"table 2 processing failed ");
@@ -2359,10 +2234,8 @@ tsc_ofplugin_v1_3_table_2_miss_entry_pkt_rcvd(int64_t   controller_handle,
   {
     if(msg != NULL)
         msg->desc.free_cbk(msg);    
-    return OF_ASYNC_MSG_CONSUMED;
   }
-
-  return status;
+   return OF_ASYNC_MSG_CONSUMED;
 }
 
 int32_t tsc_add_flwmod_1_3_msg_table_2(uint64_t  dp_handle,
@@ -2447,147 +2320,40 @@ int32_t tsc_add_flwmod_1_3_msg_table_2(uint64_t  dp_handle,
 
     /* MF1: set match field Input Port id */
     retval = of_set_in_port(msg,&(in_bound_nschain_repository_entry_p->in_port_id));
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set in port field failed,err = %d",retval);
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
 
     /* MF2: set match field Metadata */
     retval = of_set_meta_data(msg,&(in_bound_nschain_repository_entry_p->metadata),TRUE,
                                   &(in_bound_nschain_repository_entry_p->metadata_mask));
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set in Metadata field failed,err = %d",retval);
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
 
     if(in_bound_nschain_repository_entry_p->match_vlan_id != 0)
     {
       /* MF3: set match field - VLAN id for packet-origin = VM_NS and nw ports */
       in_bound_nschain_repository_entry_p->match_vlan_id = (in_bound_nschain_repository_entry_p->match_vlan_id) | 0x1000;
- 
       retval = of_set_vlan_id(msg,&(in_bound_nschain_repository_entry_p->match_vlan_id),FALSE,0);
-#if 0
-      if(retval != OFU_SET_FIELD_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set vlan id field failed,err = %d",retval);
-        status = OF_FAILURE;
-        break; 
-      }
-#endif      
     }
     
     retval = of_set_ether_type(msg,&eth_type);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"OF Set IPv4 src field failed,err = %d",retval);
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
 
     /* Set packet fields as match fields */
     retval = of_set_ipv4_destination(msg,&in_bound_nschain_repository_entry_p->selector.dst_ip,FALSE,0);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set destination ip match field");
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
 
     retval = of_set_ipv4_source(msg,&in_bound_nschain_repository_entry_p->selector.src_ip,FALSE,0);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set source ip match field");
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
-   
     retval = of_set_protocol(msg,&in_bound_nschain_repository_entry_p->selector.protocol);
-#if 0
-    if(retval != OFU_SET_FIELD_SUCCESS)
-    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set ip protocol match field ");
-      status = OF_FAILURE;
-      break;
-    }
-#endif    
 
     if(in_bound_nschain_repository_entry_p->selector.protocol == OF_IPPROTO_TCP)
     {
       retval = of_set_tcp_source_port(msg,&in_bound_nschain_repository_entry_p->selector.src_port);
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set tcp source port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
       retval = of_set_tcp_destination_port(msg,&in_bound_nschain_repository_entry_p->selector.dst_port);
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set tcp destination port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
     else if(in_bound_nschain_repository_entry_p->selector.protocol == OF_IPPROTO_UDP)
     {
       retval = of_set_udp_source_port(msg,&in_bound_nschain_repository_entry_p->selector.src_port);
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set tcp source port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
-
       retval = of_set_udp_destination_port(msg,&in_bound_nschain_repository_entry_p->selector.dst_port);
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set udp destination port match field ");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
     else if(in_bound_nschain_repository_entry_p->selector.protocol == OF_IPPROTO_ICMP)
     {
       retval = of_set_icmpv4_type(msg,&(in_bound_nschain_repository_entry_p->selector.icmp_type));
-#if 0
-      if(retval == OF_FAILURE)
-      { 
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set icmp type match field");
-        status = OF_FAILURE;
-        break;
-      }
-#endif
       retval = of_set_icmpv4_code(msg,&(in_bound_nschain_repository_entry_p->selector.icmp_code));
-#if 0
-      if(retval == OF_FAILURE)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to set icmp code match field");
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     } 
     
     /* match_start_loc_p points to the first match field input_port_id */
@@ -2608,84 +2374,34 @@ int32_t tsc_add_flwmod_1_3_msg_table_2(uint64_t  dp_handle,
       if(in_bound_nschain_repository_entry_p->copy_local_mac_addresses_b == TRUE)
       {
         retval = ofu_push_set_destination_mac_in_set_field_action(msg, &in_bound_nschain_repository_entry_p->local_out_mac[0]);
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Error in setting local destination mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif
         retval = ofu_push_set_source_mac_in_set_field_action(msg, &in_bound_nschain_repository_entry_p->local_in_mac[0]);
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting local source mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
       }
 
       if(in_bound_nschain_repository_entry_p->copy_original_mac_addresses_b == TRUE)
       {
         retval = ofu_push_set_destination_mac_in_set_field_action(msg, &in_bound_nschain_repository_entry_p->selector.dst_mac[0]);
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting original destination mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif
         retval = ofu_push_set_source_mac_in_set_field_action(msg, &in_bound_nschain_repository_entry_p->selector.src_mac[0]);
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting original source mac address err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
       }
     }
-    
+   
+    /* For 2 port S-VM */
+    if(in_bound_nschain_repository_entry_p->next_vlan_id == 0)
+    {
+      retval = ofu_push_pop_vlan_header_action(msg);
+    }
+
     if(in_bound_nschain_repository_entry_p->more_nf_b == TRUE)
     {
       if(in_bound_nschain_repository_entry_p->nw_port_b == TRUE)
       {
         OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Adding tun dest ip to flow:tun_dest ip = %x",in_bound_nschain_repository_entry_p->remote_switch_ip);
         retval = ofu_push_set_ipv4_tun_dst_addr_in_set_field_action(msg,&(in_bound_nschain_repository_entry_p->remote_switch_ip));
-#if 0
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting Tun Dest IP err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
 
         tunnel_id = (in_bound_nschain_repository_entry_p->metadata & 0xffffffff); 
         retval = ofu_push_set_logical_port_meta_data_in_set_field_action(msg,&tunnel_id /* (in_bound_nschain_repository_entry_p->nid)*/);
-#if 0      
-        if(retval != OFU_ACTION_PUSH_SUCCESS)
-        {
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in setting tun id err = %d",retval);
-          status = OF_FAILURE;
-          break;
-        }
-#endif        
       }
 
       retval = ofu_push_output_action(msg,in_bound_nschain_repository_entry_p->out_port_no,OFPCML_NO_BUFFER);
-#if 0
-      if(retval != OFU_ACTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in adding output to port action  err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     }
 
     if(in_bound_nschain_repository_entry_p->ns_chain_b == TRUE)
@@ -2704,14 +2420,6 @@ int32_t tsc_add_flwmod_1_3_msg_table_2(uint64_t  dp_handle,
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Table_id to send the packet = %d",in_bound_nschain_repository_entry_p->next_table_id);
 
       retval = ofu_push_go_to_table_instruction(msg,in_bound_nschain_repository_entry_p->next_table_id);
-#if 0
-      if(retval != OFU_INSTRUCTION_PUSH_SUCCESS)
-      {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"go to table instruction failed err = %d",retval);
-        status = OF_FAILURE;
-        break;
-      }
-#endif      
     } 
     
     ofu_end_pushing_instructions(msg,inst_start_loc_p,&instruction_len);
@@ -2784,7 +2492,7 @@ tsc_ofplugin_v1_3_table_3_miss_entry_pkt_rcvd(int64_t  controller_handle,
     }
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, " PKT-IN METADATA =%llx",metadata);
 
-    retval = tsc_unicast_table_3_miss_entry_pkt_rcvd(datapath_handle,pkt_in,metadata,in_port_id,tun_src_ip);
+    retval = tsc_unicast_table_3_miss_entry_pkt_rcvd(datapath_handle,pkt_in,msg,metadata,in_port_id,tun_src_ip);
     if(retval == OF_FAILURE)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"table 3 processing failed ");
@@ -2797,10 +2505,8 @@ tsc_ofplugin_v1_3_table_3_miss_entry_pkt_rcvd(int64_t  controller_handle,
   {
     if(msg != NULL)
         msg->desc.free_cbk(msg);
-    return OF_ASYNC_MSG_CONSUMED;
   }
-
-  return status;
+  return OF_ASYNC_MSG_CONSUMED;
 }
 
 int32_t tsc_add_flwmod_1_3_msg_table_3(uint64_t dp_handle,
@@ -2962,30 +2668,26 @@ int32_t tsc_add_flwmod_1_3_msg_table_3(uint64_t dp_handle,
     if(msg != NULL)
       msg->desc.free_cbk(msg);
   }
-
   return status;
 }
 /**********************************************************************************************/
-int32_t tsc_send_pktout_1_3_msg(uint64_t datapath_handle,uint32_t in_port,struct ofl_packet_in *pkt_in)
+int32_t tsc_send_pktout_1_3_msg(uint64_t datapath_handle,uint32_t in_port,
+                                uint8_t* packet,uint16_t packet_length)
 {
   uint8_t*  action_start_loc=NULL;
   uint16_t  action_len;
   uint16_t  msg_len;
   struct    of_msg *msg;
-  uint8_t*  pkt_data = pkt_in->packet;
   void*     conn_info_p;
-//  int32_t   flags=0;
-//  struct    pkt_mbuf *mbuf = NULL;
 
   int32_t   retval;
   int32_t   status = OF_SUCCESS;
 
-  msg_len = (OFU_PACKET_OUT_MESSAGE_LEN+16+OFU_OUTPUT_ACTION_LEN+pkt_in->packet_length);
+  msg_len = (OFU_PACKET_OUT_MESSAGE_LEN+16+OFU_OUTPUT_ACTION_LEN+packet_length);
 
   do
   {
     msg = ofu_alloc_message(OFPT_PACKET_OUT, msg_len);
-//    of_alloc_pkt_mbuf_and_set_of_msg(mbuf, msg, OFPT_PACKET_OUT, msg_len, flags, status);
     if(msg == NULL)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"%s:%d OF message alloc error \r\n",__FUNCTION__,__LINE__);
@@ -3018,7 +2720,7 @@ int32_t tsc_send_pktout_1_3_msg(uint64_t datapath_handle,uint32_t in_port,struct
     ((struct ofp_packet_out*)(msg->desc.start_of_data))->actions_len=htons(action_len);
 
     retval = of_add_data_to_pkt_and_send_to_dp(msg,datapath_handle,conn_info_p,
-                                             pkt_in->packet_length,pkt_data,NULL,NULL);
+                                               packet_length,packet,NULL,NULL);
     if(retval != OF_SUCCESS)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Error in sending packet err = %d",retval);
@@ -3175,7 +2877,6 @@ int32_t tsc_add_flwmod_1_3_msg_table_4(uint64_t  dp_handle,
     if(msg != NULL)
       msg->desc.free_cbk(msg);
   }
-
   return status;
 }
 /* Handling miss_entry for Table 4 TSC_APP_BROADCAST_OUTBOUND_TABLE_ID_4 */
@@ -3226,7 +2927,7 @@ tsc_ofplugin_v1_3_table_4_miss_entry_pkt_rcvd(int64_t   controller_handle,
     }
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, " PKT-IN METADATA2 =%llx",metadata);
 
-    retval = tsc_broadcast_outbound_table_4_miss_entry_pkt_rcvd(datapath_handle,pkt_in,metadata,in_port_id);
+    retval = tsc_broadcast_outbound_table_4_miss_entry_pkt_rcvd(datapath_handle,pkt_in,msg,metadata,in_port_id);
     if(retval == OF_FAILURE)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"%s:table 4 processing failed ",__FUNCTION__);
@@ -3235,14 +2936,12 @@ tsc_ofplugin_v1_3_table_4_miss_entry_pkt_rcvd(int64_t   controller_handle,
     }
   }while(0);
   
-  if(status == OF_FAILURE)
+  //if(status == OF_FAILURE)
   {
     if(msg != NULL)
        msg->desc.free_cbk(msg);
-    return OF_ASYNC_MSG_CONSUMED;
   }
-  
-  return status;
+  return OF_ASYNC_MSG_CONSUMED;
 }
 /******************************************Table_5**********************************************/
 int32_t tsc_add_flwmod_1_3_msg_table_5(uint64_t  dp_handle,
@@ -3358,7 +3057,6 @@ int32_t tsc_add_flwmod_1_3_msg_table_5(uint64_t  dp_handle,
     if(msg != NULL)
       msg->desc.free_cbk(msg);
   }   
- 
   return status;
 }
 /* Handling miss_entry for Table 5 */
@@ -3424,7 +3122,7 @@ tsc_ofplugin_v1_3_table_5_miss_entry_pkt_rcvd(int64_t   controller_handle,
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Tunnel Source IP = %x",tun_src_ip);
     }
 
-    retval = tsc_broadcast_inbound_table_5_miss_entry_pkt_rcvd(datapath_handle,pkt_in,metadata,in_port_id,tun_src_ip);
+    retval = tsc_broadcast_inbound_table_5_miss_entry_pkt_rcvd(datapath_handle,pkt_in,msg,metadata,in_port_id,tun_src_ip);
     if(retval == OF_FAILURE)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"%s:table 5 processing failed ",__FUNCTION__);
@@ -3433,14 +3131,12 @@ tsc_ofplugin_v1_3_table_5_miss_entry_pkt_rcvd(int64_t   controller_handle,
     }
   }while(0);
 
-  if(status == OF_FAILURE)
+  //if(status == OF_FAILURE)
   {
     if(msg != NULL)
       msg->desc.free_cbk(msg);
-    return OF_ASYNC_MSG_CONSUMED;
   }
-
-  return status;
+  return OF_ASYNC_MSG_CONSUMED;
 }
 /********************************************************************************************************************************/
 int32_t tsc_ofplugin_v1_3_nschain_table_1_flow_entry_removed_rcvd(int64_t   controller_handle,
@@ -3620,7 +3316,6 @@ int32_t tsc_ofplugin_v1_3_del_table_miss_entry(uint64_t datapath_handle,uint8_t 
 
    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Miss entries deleted");
  }while(0);
-   return status;
+ return status;
 }
-
 /*****************************************************************************************************************************/

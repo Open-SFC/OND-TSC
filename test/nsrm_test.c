@@ -1,3 +1,19 @@
+/**
+ * Copyright (c) 2012, 2013  Freescale.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
 #include "controller.h"
 #include "dprm.h"
 #include "nsrm.h"
@@ -1418,8 +1434,8 @@ int32_t nsrm_test_display_service_vms_in_chain(struct  l2_connection_to_nsinfo_b
         OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"switch_name    : %s",nwservice_instance_p->switch_name);
         OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vlanid in      : %d",nwservice_instance_p->vlan_id_in);
         OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vlanid out     : %d",nwservice_instance_p->vlan_id_out);
-        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vmns port name : %s",nwservice_instance_p->vm_ns_port_name_p);
-        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"portid         : %d",nwservice_instance_p->port_id);
+        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vmns port name : %s",nwservice_instance_p->vm_ns_port1_name_p);
+        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"portid         : %d",nwservice_instance_p->port1_id);
       }
       CNTLR_RCU_READ_LOCK_RELEASE();
    }
@@ -1453,8 +1469,8 @@ int32_t nsrm_test_display_service_vms_in_chain(struct  l2_connection_to_nsinfo_b
         OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"switch_name    : %s",nwservice_instance_p->switch_name);
         OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vlanid in      : %d",nwservice_instance_p->vlan_id_in);
         OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vlanid out     : %d",nwservice_instance_p->vlan_id_out);
-        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vmns port name : %s",nwservice_instance_p->vm_ns_port_name_p);
-        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"portid         : %d",nwservice_instance_p->port_id);
+        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"vmns port name : %s",nwservice_instance_p->vm_ns_port1_name_p);
+        OF_LOG_MSG(OF_LOG_MOD,OF_LOG_DEBUG,"portid         : %d",nwservice_instance_p->port1_id);
       }
       CNTLR_RCU_READ_LOCK_RELEASE();
    } 

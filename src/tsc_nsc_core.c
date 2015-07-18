@@ -923,7 +923,7 @@ void nsc_free_table_1_repository_entry_rcu(struct rcu_head *nsc_repository_entry
         else
         {
           //printf("\r\n Successfully deleted table_1 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Successfully  deleted table_1 repository entry in rcu callback");
+          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully  deleted table_1 repository entry in rcu callback");
         }    
       } 
     }
@@ -971,7 +971,7 @@ void nsc_free_table_2_repository_entry_rcu(struct rcu_head *nsc_repository_entry
         else
         {
           //printf("\r\n Successfully deleted table_2 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Successfully deleted table_2 repository entry in rcu callback");
+          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully deleted table_2 repository entry in rcu callback");
         }
       }
     }
@@ -1019,7 +1019,7 @@ void nsc_free_table_3_repository_entry_rcu(struct rcu_head *ucastpkt_outport_rep
         else
         {
           //printf("\r\n Successfully deleted table_3 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Successfully  deleted table_3 repository entry in rcu callback");
+          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully  deleted table_3 repository entry in rcu callback");
         }
       }
     }

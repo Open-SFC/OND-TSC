@@ -1,3 +1,25 @@
+/**
+ * Copyright (c) 2012, 2013  Freescale.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+**/
+
+/*File: list_selectors.c
+ * Author: vinod sarma
+ * Description:
+ * This file implements listing of repository entries from cli.
+*/
+
 #include "controller.h"
 #include "dprm.h"
 #include "nsrm.h"
@@ -18,11 +40,8 @@
 #include "tsc_controller.h"
 
 struct mchash_table *nsc_repository_table_g = NULL;
-
 struct nsc_repository_key *global_repository_key_p = NULL;
-
 struct mchash_table *nsc_table_3_repository_table_g = NULL;
-
 struct nsc_repository_key *global_table_3_repository_key_p = NULL;
 
 int32_t flag_1_2 = 0;
@@ -36,8 +55,6 @@ int32_t nsc_add_repository_entry(struct nsc_repository_key *key)
 
    return TSC_SUCCESS;
 }
-
-
 
 int32_t nsc_get_first_repository_entry(struct nsc_repository_key *key ,uint64_t *match_saferef, struct  nsc_repository_entry  *nsc_repository_entry_p)
 {
@@ -271,7 +288,6 @@ int32_t nsc_get_next_repository_entry(struct nsc_repository_key *key ,uint64_t r
   return TSC_SUCCESS;
 }
 
-
 int32_t nsc_get_exact_repository_entry(void)
 {
 
@@ -284,7 +300,6 @@ int32_t nsc_get_exact_repository_entry(void)
       return TSC_SUCCESS;
 }
 
-
 int32_t nsc_add_table_3_repository_entry(struct nsc_repository_key *key)
 {
    global_table_3_repository_key_p = key;
@@ -293,7 +308,6 @@ int32_t nsc_add_table_3_repository_entry(struct nsc_repository_key *key)
 
    return TSC_SUCCESS;
 }
-
 
 int32_t nsc_get_first_table_3_repository_entry(struct   nsc_repository_key *key ,
                                                uint64_t *node_saferef,
@@ -365,7 +379,8 @@ int32_t nsc_get_first_table_3_repository_entry(struct   nsc_repository_key *key 
   return TSC_FAILURE;
 }
 
-int32_t nsc_get_next_table_3_repository_entry(struct nsc_repository_key *key ,uint64_t relative_saferef,                                               uint64_t *match_saferef,
+int32_t nsc_get_next_table_3_repository_entry(struct nsc_repository_key *key ,uint64_t relative_saferef,
+                                              uint64_t *match_saferef,
                                               struct  ucastpkt_repository_entry  *nsc_repository_entry_p)
 {
   struct   vn_service_chaining_info  *vn_nsc_info_p          = NULL;
@@ -449,7 +464,6 @@ int32_t nsc_get_next_table_3_repository_entry(struct nsc_repository_key *key ,ui
   return TSC_SUCCESS;
 }
 
-
 int32_t nsc_get_exact_table_3_repository_entry(void)
 
 {
@@ -461,8 +475,3 @@ int32_t nsc_get_exact_table_3_repository_entry(void)
   else
       return TSC_SUCCESS;
 }
-
-
-
-
-

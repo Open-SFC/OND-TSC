@@ -105,13 +105,30 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
   {
    nschain_repository_entry_p->selector.selector_type  = selector_type;
    nschain_repository_entry_p->selector.cnbind_node_p  = cn_bind_entry_p; /* Added to make it work for proactive flow push */
+   nschain_repository_entry_p->zone                    = cn_bind_entry_p->selector_1.zone;
+   nschain_repository_entry_p->selector.zone           = cn_bind_entry_p->selector_1.zone;
+   nschain_repository_entry_p->selector.hashkey        = cn_bind_entry_p->selector_1.hashkey;
+
+   nschain_repository_entry_p->selector.index = cn_bind_entry_p->selector_1.index;
+   nschain_repository_entry_p->selector.magic = cn_bind_entry_p->selector_1.magic;
+   nschain_repository_entry_p->selector.safe_reference = cn_bind_entry_p->selector_1.safe_reference;
+
+   nschain_repository_entry_p->selector.other_selector_p = &(cn_bind_entry_p->selector_2);
+   nschain_repository_entry_p->selector.other_selector_p->index = cn_bind_entry_p->selector_2.index;
+   nschain_repository_entry_p->selector.other_selector_p->magic = cn_bind_entry_p->selector_2.magic;
+   nschain_repository_entry_p->selector.other_selector_p->safe_reference = cn_bind_entry_p->selector_2.safe_reference;
+
    if(nschain_repository_entry_p->selector.selector_type == 1)
    {
      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"A matching PRIMARY SELECTOR is found. selector type 1:PRIMARY 2:SECONDARY  = %d",nschain_repository_entry_p->selector.selector_type);
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"zone for primary selector = %d",nschain_repository_entry_p->zone);
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src ip for primary selector  = %x",nschain_repository_entry_p->selector.src_ip);
    }
    else
    {
      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"A matching SECONDARY SELECTOR is found. selector type 1:PRIMARY 2:SECONDARY  = %d",nschain_repository_entry_p->selector.selector_type);
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"zone for secondary selector = %d",nschain_repository_entry_p->zone);
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"src ip for secondary selector  = %x",nschain_repository_entry_p->selector.src_ip);
    }
 
     retval = nsc_lookup_l2_nschaining_info(pkt_in,
@@ -164,17 +181,23 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
     }
     CNTLR_RCU_READ_LOCK_RELEASE();  
     if(retval == OF_FAILURE)
-      return retval; 
+      return retval;
+
+    nschain_repository_entry_p->selector.index = cn_bind_entry_p->selector_1.index;
+    nschain_repository_entry_p->selector.magic = cn_bind_entry_p->selector_1.magic;
+    nschain_repository_entry_p->selector.safe_reference = cn_bind_entry_p->selector_1.safe_reference;
+
+    nschain_repository_entry_p->selector.other_selector_p = &(cn_bind_entry_p->selector_2);
+    nschain_repository_entry_p->selector.other_selector_p->index = cn_bind_entry_p->selector_2.index;
+    nschain_repository_entry_p->selector.other_selector_p->magic = cn_bind_entry_p->selector_2.magic;
+    nschain_repository_entry_p->selector.other_selector_p->safe_reference = cn_bind_entry_p->selector_2.safe_reference;
+
   }
-
-  nschain_repository_entry_p->selector.index = cn_bind_entry_p->selector_1.index;
-  nschain_repository_entry_p->selector.magic = cn_bind_entry_p->selector_1.magic;
-  nschain_repository_entry_p->selector.safe_reference = cn_bind_entry_p->selector_1.safe_reference;
-
-  nschain_repository_entry_p->selector.other_selector_p = &(cn_bind_entry_p->selector_2);
-  nschain_repository_entry_p->selector.other_selector_p->index = cn_bind_entry_p->selector_2.index;
-  nschain_repository_entry_p->selector.other_selector_p->magic = cn_bind_entry_p->selector_2.magic;
-  nschain_repository_entry_p->selector.other_selector_p->safe_reference = cn_bind_entry_p->selector_2.safe_reference;
+  else if(retval == NSC_CONNECTION_BIND_ENTRY_FOUND)
+  {
+    nschain_repository_entry_p->zone  = nschain_repository_entry_p->selector.zone;
+  }    
+  
   nschain_repository_entry_p->vm_and_service1_not_on_same_switch = 0;
   nschain_repository_entry_p->ns_chain_b = FALSE;
   nschain_repository_entry_p->more_nf_b  = FALSE; 
@@ -237,40 +260,99 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"network service instance name = %s",nwservice_instance_p->name_p);
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"pkt_origin = %d",pkt_origin);
 
-      if(pkt_origin == VM_NS)
+      if((pkt_origin == VM_NS) || (pkt_origin == VM_NS_IN ) || (pkt_origin == VM_NS_OUT ) ) 
       {
         OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Incoming network function found for VM_NS");
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"nwservice_instance_index = %d",nwservice_instance_index);
 
         if(nsc_nw_function_found == 0)
         {
-          if((selector_type == SELECTOR_PRIMARY) && (nwservice_instance_p->vlan_id_out == nschain_repository_entry_p->vlan_id_pkt))
+          if(nwservice_instance_p->system_br_saferef  ==  nschain_repository_entry_p->dp_handle)
           {
-            nsc_nw_function_found = 1;  /* Found the nw_function from which the packet is received. */
-          }
-          
-          if((selector_type == SELECTOR_SECONDARY) && (nwservice_instance_p->vlan_id_in == nschain_repository_entry_p->vlan_id_pkt))
-          {
-            nsc_nw_function_found = 1;  /* Found the nw_function from which the packet is received. */
-          }
-        }
+            if(nwservice_instance_p->no_of_ports == 1) 
+            {
+              if(nschain_repository_entry_p->zone != ZONE_LESS)
+              {
+                if(nwservice_instance_p->port1_id == nschain_repository_entry_p->in_port_id)
+                {
+                  nsc_nw_function_found = 1;
+                }
+              }
+              else
+              {
+                if((selector_type == SELECTOR_PRIMARY) && (nwservice_instance_p->vlan_id_out == nschain_repository_entry_p->vlan_id_pkt))
+                {
+                  nsc_nw_function_found = 1;  /* Found the nw_function from which the packet is received. */
+                }
+                else if((selector_type == SELECTOR_SECONDARY) && (nwservice_instance_p->vlan_id_in == nschain_repository_entry_p->vlan_id_pkt))
+                {
+                  nsc_nw_function_found = 1;  /* Found the nw_function from which the packet is received. */
+                }
+              }      
+            }  
+            else /* 2 port S-VM */
+            {
+              if(nschain_repository_entry_p->zone == ZONE_LEFT)
+              {
+                if((selector_type == SELECTOR_PRIMARY) && (nwservice_instance_p->port2_id == nschain_repository_entry_p->in_port_id))
+                {
+                  nsc_nw_function_found = 1;
+                  nschain_repository_entry_p->vlan_id_pkt = 0;
+                }      
+                else if((selector_type == SELECTOR_SECONDARY) && (nwservice_instance_p->port1_id == nschain_repository_entry_p->in_port_id))
+                {
+                  nsc_nw_function_found = 1;
+                  nschain_repository_entry_p->vlan_id_pkt = 0;
+                }
+              }  
+              else /* ZONE_RIGHT */
+              {
+                if((selector_type == SELECTOR_PRIMARY) && (nwservice_instance_p->port1_id == nschain_repository_entry_p->in_port_id))
+                {
+                  nsc_nw_function_found = 1;
+                  nschain_repository_entry_p->vlan_id_pkt = 0;
+                }
+                else if((selector_type == SELECTOR_SECONDARY) && (nwservice_instance_p->port2_id == nschain_repository_entry_p->in_port_id))
+                {
+                  nsc_nw_function_found = 1;
+                  nschain_repository_entry_p->vlan_id_pkt = 0;
+                }
+              }    
+            }
+          }  
+        }  
         else if(nsc_nw_function_found == 1)
         {
           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"outgoing network function found for VM_NS");
           OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"nwservice_instance_index = %d",nwservice_instance_index); 
 
           nsc_nw_function_found = 2; /* Target nsc_nw_function found */
-          nschain_repository_entry_p->more_nf_b     = TRUE;
-          nschain_repository_entry_p->next_vlan_id  = nwservice_instance_p->vlan_id_in;
-          if(selector_type == SELECTOR_SECONDARY)
+          nschain_repository_entry_p->more_nf_b  = TRUE;
+          
+          if(nschain_repository_entry_p->zone == ZONE_LESS)
+          {    
+            nschain_repository_entry_p->match_vlan_id   = nschain_repository_entry_p->vlan_id_pkt; 
+            
+            nschain_repository_entry_p->next_vlan_id    = nwservice_instance_p->vlan_id_in;
+            if(selector_type == SELECTOR_SECONDARY)
+              nschain_repository_entry_p->next_vlan_id  = nwservice_instance_p->vlan_id_out;
+          }
+          /* if the next 2-port S-VM is on the same compute node,the next_vlan_id must be zer0.*/
+          /* If the 1st S-VM is 2 port, match vlan id must be 0. */
+          /* For 1-port S-VMs,the two vlan ids will have proper values */ 
+          else if(nschain_repository_entry_p->zone == ZONE_LEFT)
           {
-            nschain_repository_entry_p->next_vlan_id  = nwservice_instance_p->vlan_id_out;
-          }   
-          nschain_repository_entry_p->match_vlan_id = nschain_repository_entry_p->vlan_id_pkt;
-
+            nschain_repository_entry_p->match_vlan_id   = nschain_repository_entry_p->vlan_id_pkt;
+            nschain_repository_entry_p->next_vlan_id    = nwservice_instance_p->vlan_id_in;
+          }     
+          else /*  ZONE_RIGHT */
+          {  
+            nschain_repository_entry_p->match_vlan_id = nschain_repository_entry_p->vlan_id_pkt; 
+            nschain_repository_entry_p->next_vlan_id  = nwservice_instance_p->vlan_id_out;   
+          }
           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"vlan_id_in = %d",nschain_repository_entry_p->next_vlan_id);
           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"vlan_it_out= %d",nschain_repository_entry_p->match_vlan_id);
-      
+
           break; 
         }     
       }
@@ -280,18 +362,31 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"nwservice_instance_index = %d",nwservice_instance_index);
         nsc_nw_function_found = 1; /* Target nw function found */
         nschain_repository_entry_p->more_nf_b     = TRUE;
-        nschain_repository_entry_p->next_vlan_id  = nwservice_instance_p->vlan_id_in;
-        if(selector_type == SELECTOR_SECONDARY)
-        {
-          printf("\r\n VM_APPLN SEC");
-          nschain_repository_entry_p->next_vlan_id  = nwservice_instance_p->vlan_id_out;
-        } 
-        else
-        {
-          printf("\r\n VM_APPLN PRI");
-        }    
+        nschain_repository_entry_p->vlan_id_pkt   = 0; 
         nschain_repository_entry_p->match_vlan_id = 0;
-          
+
+        if(nschain_repository_entry_p->zone == ZONE_LESS) 
+        {    
+          if(selector_type == SELECTOR_PRIMARY)
+          {
+            nschain_repository_entry_p->next_vlan_id = nwservice_instance_p->vlan_id_in;
+            printf("\r\n VM_APPLN PRI");
+          }
+          else if(selector_type == SELECTOR_SECONDARY)
+          {
+            nschain_repository_entry_p->next_vlan_id  = nwservice_instance_p->vlan_id_out;
+            printf("\r\n VM_APPLN SEC");
+          } 
+        }
+        else if(nschain_repository_entry_p->zone == ZONE_LEFT)
+        {
+          nschain_repository_entry_p->next_vlan_id = nwservice_instance_p->vlan_id_in;
+        }    
+        else  //(nschain_repository_entry_p->zone == ZONE_RIGHT)
+        {
+          nschain_repository_entry_p->next_vlan_id = nwservice_instance_p->vlan_id_out;  
+        }
+        
         OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"vlan_id_in = %d",nschain_repository_entry_p->next_vlan_id);
         OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"vlan_it_out= %d",nschain_repository_entry_p->match_vlan_id);
 
@@ -311,8 +406,12 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
           nschain_repository_entry_p->more_nf_b = TRUE;
 
           nschain_repository_entry_p->next_vlan_id  = nschain_repository_entry_p->vlan_id_pkt;
+          if(nwservice_instance_p->no_of_ports == 2)
+          {
+            nschain_repository_entry_p->next_vlan_id  = 0;
+          }          
           nschain_repository_entry_p->match_vlan_id = nschain_repository_entry_p->vlan_id_pkt;
-
+          
           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"vlan_id_in = %d",nschain_repository_entry_p->next_vlan_id);
           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"vlan_it_out= %d",nschain_repository_entry_p->match_vlan_id);
 
@@ -327,6 +426,10 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
           nschain_repository_entry_p->more_nf_b = TRUE;
 
           nschain_repository_entry_p->next_vlan_id  = nschain_repository_entry_p->vlan_id_pkt;
+          if(nwservice_instance_p->no_of_ports == 2)
+          {
+            nschain_repository_entry_p->next_vlan_id  = 0;
+          }
           nschain_repository_entry_p->match_vlan_id = nschain_repository_entry_p->vlan_id_pkt;
 
           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"vlan_id_in = %d",nschain_repository_entry_p->next_vlan_id);
@@ -338,26 +441,22 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
       } 
     } /* for */
   
-    CNTLR_RCU_READ_LOCK_RELEASE();
-
     nschain_repository_entry_p->selector.selector_type = selector_type;
 
-    if(pkt_origin == VM_NS)
+    if((pkt_origin == VM_NS) || (pkt_origin == VM_NS_IN) || (pkt_origin == VM_NS_OUT))
     { 
       if(nsc_nw_function_found == 1) /* No more network functions present in the nschain. */
       {
         OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"No more network functions present in the nschain: VM_NS");
-        //OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"nwservice_instance_index = %d",nwservice_instance_index);
+        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"nwservice_instance_index = %d",nwservice_instance_index);
         nschain_repository_entry_p->more_nf_b  = FALSE;
         nschain_repository_entry_p->ns_port_b  = TRUE;
         nschain_repository_entry_p->next_vlan_id  = 0;
-        nschain_repository_entry_p->match_vlan_id = nschain_repository_entry_p->vlan_id_pkt;
+        nschain_repository_entry_p->match_vlan_id = nschain_repository_entry_p->vlan_id_pkt; /* For 2 port S-VM it must be 0 */
         nschain_repository_entry_p->next_table_id = TSC_APP_UNICAST_TABLE_ID_3;
         
         do
         {
-          CNTLR_RCU_READ_LOCK_TAKE();
-
           /* Assuming it is a remote port get out_port_no,tun_dest_ip,remote_switch_name */
           printf("\r\n crashing dst mac = " );
           for(ii = 0;ii<6;ii++)
@@ -417,11 +516,10 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
           }
         }while(0);
 
-        CNTLR_RCU_READ_LOCK_RELEASE();   
-       
         if(retval == OF_FAILURE)
         {
           printf("\r\n MET 04");
+          CNTLR_RCU_READ_LOCK_RELEASE();
           return OF_FAILURE;
         }
       }
@@ -481,9 +579,12 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"The next NW-Service VM in the ns chain is in another compute node");
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local  switch name = %s",nschain_repository_entry_p->local_switch_name_p);
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"remote switch name = %s",nwservice_instance_p->switch_name);     
-      nschain_repository_entry_p->vm_and_service1_not_on_same_switch = 1; /* For Proactive pushing  */
-
-      CNTLR_RCU_READ_LOCK_TAKE();
+      
+      if(pkt_origin == VM_APPLN)
+      {    
+        nschain_repository_entry_p->vm_and_service1_not_on_same_switch = 1; /* For Proactive pushing  */
+      }
+     
       /* Get IP of the remote switch */ 
       retval = dprm_get_switch_data_ip(nwservice_instance_p->switch_name,&(nschain_repository_entry_p->remote_switch_ip));
       if(retval != DPRM_SUCCESS)
@@ -503,8 +604,6 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
         CNTLR_RCU_READ_LOCK_RELEASE();
         return OF_FAILURE;
       }
-      CNTLR_RCU_READ_LOCK_RELEASE();
-
       nschain_repository_entry_p->nw_port_b = TRUE;
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG," nw side unicastport number = %d",nschain_repository_entry_p->out_port_no);
     }  
@@ -514,60 +613,86 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local  switch name = %s",nschain_repository_entry_p->local_switch_name_p);
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"remote switch name = %s",nwservice_instance_p->switch_name);
 
-      nschain_repository_entry_p->nw_port_b   = FALSE;   
-      nschain_repository_entry_p->out_port_no = nwservice_instance_p->port_id;
+      nschain_repository_entry_p->nw_port_b = FALSE;   
+     
+      if(nwservice_instance_p->no_of_ports == 1)
+      {    
+        nschain_repository_entry_p->out_port_no = nwservice_instance_p->port1_id;
+      }
+      else
+      {
+        if(((nschain_repository_entry_p->zone == ZONE_LEFT) && (selector_type == SELECTOR_SECONDARY)) 
+                                                             ||
+           ((nschain_repository_entry_p->zone == ZONE_RIGHT) && (selector_type == SELECTOR_PRIMARY))                                                  
+          )
+        {
+          nschain_repository_entry_p->out_port_no = nwservice_instance_p->port2_id;
+        }
+        else
+        {
+          nschain_repository_entry_p->out_port_no = nwservice_instance_p->port1_id;
+        }    
+        nschain_repository_entry_p->next_vlan_id = 0;          
+      }
+          
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"port number = %d",nschain_repository_entry_p->out_port_no); 
     }
   }
-  if(selector_type == SELECTOR_PRIMARY)
-  {
-    for(ii=0; ii<6; ii++)
-    {
-      nschain_repository_entry_p->local_in_mac[ii]  = cn_bind_entry_p->local_in_mac[ii];
-      nschain_repository_entry_p->local_out_mac[ii] = cn_bind_entry_p->local_out_mac[ii];
-    }
-  }
-  if(selector_type == SELECTOR_SECONDARY)
-  {
-    for(ii=0; ii<6; ii++) 
-    {
-      nschain_repository_entry_p->local_in_mac[ii]  = cn_bind_entry_p->local_out_mac[ii];
-      nschain_repository_entry_p->local_out_mac[ii] = cn_bind_entry_p->local_in_mac[ii];
-    }
-  }
 
-  for(ii=0;ii<6;ii++)
-  {
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_mac = %x",nschain_repository_entry_p->local_out_mac[ii]);
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_mac = %x",nschain_repository_entry_p->local_in_mac[ii]);
-  }
+  CNTLR_RCU_READ_LOCK_RELEASE(); 
   
-   nschain_repository_entry_p->copy_local_mac_addresses_b       = FALSE;
-   nschain_repository_entry_p->copy_original_mac_addresses_b    = FALSE;
+  nschain_repository_entry_p->copy_local_mac_addresses_b       = FALSE;
+  nschain_repository_entry_p->copy_original_mac_addresses_b    = FALSE;
 
-  if((pkt_origin == VM_APPLN) && (nschain_repository_entry_p->more_nf_b == TRUE) && (nschain_repository_entry_p->nw_port_b == FALSE))
+  if(nschain_repository_entry_p->zone == ZONE_LESS)
   {
-    nschain_repository_entry_p->copy_local_mac_addresses_b = TRUE;
-  }
-
-  if((pkt_origin == VM_NS) && (nschain_repository_entry_p->more_nf_b == TRUE))
-  {
-    if(nschain_repository_entry_p->nw_port_b == TRUE)
+    if(selector_type == SELECTOR_PRIMARY)
     {
-      nschain_repository_entry_p->copy_original_mac_addresses_b = TRUE;
+      for(ii=0; ii<6; ii++)
+      {
+        nschain_repository_entry_p->local_in_mac[ii]  = cn_bind_entry_p->local_in_mac[ii];
+        nschain_repository_entry_p->local_out_mac[ii] = cn_bind_entry_p->local_out_mac[ii];
+      }
     }
-  } 
+    if(selector_type == SELECTOR_SECONDARY)
+    {
+      for(ii=0; ii<6; ii++) 
+      {
+        nschain_repository_entry_p->local_in_mac[ii]  = cn_bind_entry_p->local_out_mac[ii];
+        nschain_repository_entry_p->local_out_mac[ii] = cn_bind_entry_p->local_in_mac[ii];
+      }
+    }
 
-  else if((pkt_origin == VM_NS) && (nschain_repository_entry_p->more_nf_b == FALSE))
-  {
-    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Set match fields as local mac addresses for packets received from local service VM");
-    nschain_repository_entry_p->copy_original_mac_addresses_b = TRUE;
-  }  
+    for(ii=0;ii<6;ii++)
+    {
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_mac = %x",nschain_repository_entry_p->local_out_mac[ii]);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_mac = %x",nschain_repository_entry_p->local_in_mac[ii]);
+    }
+
+    if((pkt_origin == VM_APPLN) && (nschain_repository_entry_p->more_nf_b == TRUE) && (nschain_repository_entry_p->nw_port_b == FALSE))
+    {
+      nschain_repository_entry_p->copy_local_mac_addresses_b = TRUE;
+    }
+
+    if((pkt_origin == VM_NS) && (nschain_repository_entry_p->more_nf_b == TRUE))
+    {
+      if(nschain_repository_entry_p->nw_port_b == TRUE)
+      {
+        nschain_repository_entry_p->copy_original_mac_addresses_b = TRUE;
+      }
+    } 
+
+    else if((pkt_origin == VM_NS) && (nschain_repository_entry_p->more_nf_b == FALSE))
+    {
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Set match fields as local mac addresses for packets received from local service VM");
+      nschain_repository_entry_p->copy_original_mac_addresses_b = TRUE;
+    }   
  
-  if(((pkt_origin == NW_UNICAST_SIDE)||(pkt_origin == NW_BROADCAST_SIDE)) && (nschain_repository_entry_p->more_nf_b == TRUE) && (nschain_repository_entry_p->nw_port_b == FALSE)) 
-  {
-    nschain_repository_entry_p->copy_local_mac_addresses_b = TRUE; 
-  }
+    if(((pkt_origin == NW_UNICAST_SIDE)||(pkt_origin == NW_BROADCAST_SIDE)) && (nschain_repository_entry_p->more_nf_b == TRUE) && (nschain_repository_entry_p->nw_port_b == FALSE)) 
+    {
+      nschain_repository_entry_p->copy_local_mac_addresses_b = TRUE; 
+    }
+  }  
   //nsc_print_repository_entry(nschain_repository_entry_p);
   
   return OF_SUCCESS;
@@ -646,6 +771,14 @@ void nsc_print_repository_entry(struct nschain_repository_entry* nschain_reposit
   {
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"pkt_origin = %s"," VM_NS");
   }
+  else if (nschain_repository_entry_p->pkt_origin == 2)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"pkt_origin = %s"," VM_NS_IN");
+  }    
+  else if (nschain_repository_entry_p->pkt_origin == 3)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"pkt_origin = %s"," VM_NS_OUT");
+  }    
   else
   {
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"pkt_origin = %s"," NW ");
@@ -688,7 +821,7 @@ void nsc_print_repository_entry(struct nschain_repository_entry* nschain_reposit
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"flow_mod_priority = %d",nschain_repository_entry_p->flow_mod_priority);
 }
 /*****************************************************************************************************************************************/
-#if 1
+/* Zone Less traffic */
 int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_repository_entry_p)
 {
   uint8_t  nw_type,no_of_nwservice_instances_1,no_of_nwservice_instances_2;
@@ -732,11 +865,11 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
     return OF_SUCCESS;
   }
    
-  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_ERROR,"cn_bind_entry   = %x",cn_bind_entry_p); 
+  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"cn_bind_entry   = %x",cn_bind_entry_p); 
   no_of_nwservice_instances_1  = (cn_bind_entry_p->nwservice_info).no_of_nwservice_instances;
   no_of_nwservice_instances_2  = no_of_nwservice_instances_1; 
   nw_services_p = (struct  nw_services_to_apply *)(cn_bind_entry_p->nwservice_info.nw_services_p);
-  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_ERROR,"no_of_nwservice_instances = %d",no_of_nwservice_instances_1);
+  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"no_of_nwservice_instances = %d",no_of_nwservice_instances_1);
  
   printf("\r\nNS= %d",no_of_nwservice_instances_1);
   if(no_of_nwservice_instances_1 ==  0)
@@ -746,11 +879,79 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
     return OF_FAILURE;
   }
   first_service_sel_1_p   = nw_services_p; /* Assumed that first service is present */
-  first_service_sel_2_p   = (struct nw_services_to_apply*)(nw_services_p + (no_of_nwservice_instances_1 - 1)); 
+  first_service_sel_2_p   = (struct nw_services_to_apply*)(nw_services_p + (no_of_nwservice_instances_1 - 1));
+
+  if(nschain_repository_entry_p->selector.selector_type == SELECTOR_SECONDARY)
+  {
+    retval = OF_SUCCESS;
+    if(nschain_repository_entry_p->vm_and_service1_not_on_same_switch == 1)
+    {
+      //printf("NOT-SSW-SEC");
+      nschain_repository_entry_p->vm_and_service1_not_on_same_switch = 2;
+    
+      retval = nsrm_get_nwservice_instance_byhandle(first_service_sel_2_p->nschain_object_handle,
+                                                    first_service_sel_2_p->nwservice_object_handle,
+                                                    first_service_sel_2_p->nwservice_instance_handle,
+                                                    &first_nwservice_sel_2_instance_p);
+
+      if(retval == OF_FAILURE)
+      {
+          OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Failed to get the first service instance for secondary selector.");
+          CNTLR_RCU_READ_LOCK_RELEASE();
+          printf("\r\n PPH-101");
+          return retval; /* Packet miss logic is any way in place */
+      }
+      /* Get IP of the first switch */
+      retval = dprm_get_switch_data_ip(nschain_repository_entry_p->local_switch_name_p,&(tsc_all_flows_p->remote_ip));
+      if(retval != DPRM_SUCCESS)
+      {
+        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Invalid remote switch name");
+        CNTLR_RCU_READ_LOCK_RELEASE();
+        printf("\r\n PPH-102");
+        return OF_FAILURE;
+      }
+      no_of_nwbr_ports = 1;
+      retval = tsc_nvm_modules[nw_type].nvm_module_get_broadcast_nwports(first_nwservice_sel_2_instance_p->switch_name,
+                                                                         serviceport,
+                                                                         0,  /* nss vxlan_nw_p->nid */
+                                                                         &no_of_nwbr_ports,
+                                                                         &(tsc_all_flows_p->inport_id),
+                                                                         tsc_all_flows_p->remote_ip  /* one port specific to remote ip */
+                                                                        );
+
+      if(retval != OF_SUCCESS)
+      {
+        OF_LOG_MSG(OF_LOG_TSC,OF_LOG_ERROR,"vxlan broadcast ports not found");
+        CNTLR_RCU_READ_LOCK_RELEASE();
+        printf("\r\n PPH-103");
+        return OF_FAILURE;
+      }
+      
+      tsc_all_flows_p->sel_type_swap_e = SEL_SECONDARY_NOSWAP;
+      tsc_all_flows_p->table_no        = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
+      tsc_all_flows_p->pkt_origin      = NW_BROADCAST_SIDE;
+      tsc_all_flows_p->dp_handle       = first_nwservice_sel_2_instance_p->system_br_saferef;
+      tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_2_instance_p->vlan_id_out;
+      tsc_all_flows_p->next_vlan_id    = first_nwservice_sel_2_instance_p->vlan_id_out;
+      tsc_all_flows_p->vlan_id_pkt     = first_nwservice_sel_2_instance_p->vlan_id_out;
+      tsc_all_flows_p->out_port_no     = first_nwservice_sel_2_instance_p->port1_id;
+      tsc_all_flows_p->copy_local_mac_addresses_b       = TRUE;
+      tsc_all_flows_p->copy_original_mac_addresses_b    = FALSE;
+      tsc_all_flows_p->nw_port_b                        = FALSE;
+      
+      /* F9 secondary Flow */
+      retval = tsc_nsc_send_proactive_flow(nschain_repository_entry_p,
+                                           tsc_all_flows_p,
+                                           first_nwservice_sel_2_instance_p,
+                                           &repository_entry_1_p);
+    }
+    CNTLR_RCU_READ_LOCK_RELEASE();
+    return retval;
+  }    
 
   if(nschain_repository_entry_p->vm_and_service1_not_on_same_switch == 1)
   {
-      printf("NOT-SSW");
+      //printf("NOT-SSW-PRI");
       nschain_repository_entry_p->vm_and_service1_not_on_same_switch = 2;
 
       retval = nsrm_get_nwservice_instance_byhandle(first_service_sel_1_p->nschain_object_handle,
@@ -791,19 +992,20 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
         printf("\r\n PPH-03");
         return OF_FAILURE;
       }
-      tsc_all_flows_p->selector_type = SELECTOR_PRIMARY;
-      tsc_all_flows_p->table_no      = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
-      tsc_all_flows_p->pkt_origin    = NW_BROADCAST_SIDE;  
-      tsc_all_flows_p->dp_handle     = first_nwservice_sel_1_instance_p->system_br_saferef;
-      tsc_all_flows_p->match_vlan_id = first_nwservice_sel_1_instance_p->vlan_id_in;
-      tsc_all_flows_p->next_vlan_id  = first_nwservice_sel_1_instance_p->vlan_id_in;
-      tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_1_instance_p->vlan_id_in;
-      tsc_all_flows_p->out_port_no   = first_nwservice_sel_1_instance_p->port_id;
+      tsc_all_flows_p->sel_type_swap_e = SEL_PRIMARY;
+      tsc_all_flows_p->table_no        = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
+      tsc_all_flows_p->pkt_origin      = NW_BROADCAST_SIDE;  
+      tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef;
+      tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_1_instance_p->vlan_id_in;
+      tsc_all_flows_p->next_vlan_id    = first_nwservice_sel_1_instance_p->vlan_id_in;
+      tsc_all_flows_p->vlan_id_pkt     = first_nwservice_sel_1_instance_p->vlan_id_in;
+      tsc_all_flows_p->out_port_no     = first_nwservice_sel_1_instance_p->port1_id;
       tsc_all_flows_p->copy_local_mac_addresses_b       = TRUE;
       tsc_all_flows_p->copy_original_mac_addresses_b    = FALSE;
       tsc_all_flows_p->nw_port_b     = FALSE;
 
-      /* F9 Flow */   
+      /* F9 primary Flow */   
+
       retval = tsc_nsc_send_proactive_flow(nschain_repository_entry_p,
                                            tsc_all_flows_p,               
                                            first_nwservice_sel_1_instance_p,
@@ -863,13 +1065,13 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
         /* Two services are on different switches. Push F3 using table 1 on first switch and F4 using table 2 on next switch. */   
         /* Their dp_hanldes are obtained from their nw_instances */
 
-        tsc_all_flows_p->selector_type = SELECTOR_PRIMARY;
-        tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-        tsc_all_flows_p->pkt_origin    = VM_NS;  /* F3 Flow */ 
-        tsc_all_flows_p->dp_handle     = first_nwservice_sel_1_instance_p->system_br_saferef; 
-        tsc_all_flows_p->inport_id     = first_nwservice_sel_1_instance_p->port_id;
-        tsc_all_flows_p->match_vlan_id = first_nwservice_sel_1_instance_p->vlan_id_out;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_1_instance_p->vlan_id_in;
+        tsc_all_flows_p->sel_type_swap_e = SEL_PRIMARY;
+        tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+        tsc_all_flows_p->pkt_origin      = VM_NS;  /* F3 Flow */ 
+        tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef; 
+        tsc_all_flows_p->inport_id       = first_nwservice_sel_1_instance_p->port1_id;
+        tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_1_instance_p->vlan_id_out;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_1_instance_p->vlan_id_in;
         tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_1_instance_p->vlan_id_out;
         tsc_all_flows_p->copy_local_mac_addresses_b     = FALSE;
         tsc_all_flows_p->copy_original_mac_addresses_b  = TRUE;
@@ -930,14 +1132,14 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
           return OF_FAILURE;
         }
        
-        tsc_all_flows_p->selector_type = SELECTOR_PRIMARY;
-        tsc_all_flows_p->table_no      = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
-        tsc_all_flows_p->pkt_origin    = NW_BROADCAST_SIDE; 
-        tsc_all_flows_p->dp_handle     = next_nwservice_sel_1_instance_p->system_br_saferef;
-        tsc_all_flows_p->match_vlan_id = next_nwservice_sel_1_instance_p->vlan_id_in;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_1_instance_p->vlan_id_in;
-        tsc_all_flows_p->vlan_id_pkt   = next_nwservice_sel_1_instance_p->vlan_id_in;
-        tsc_all_flows_p->out_port_no   = next_nwservice_sel_1_instance_p->port_id;
+        tsc_all_flows_p->sel_type_swap_e = SEL_PRIMARY;
+        tsc_all_flows_p->table_no        = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
+        tsc_all_flows_p->pkt_origin      = NW_BROADCAST_SIDE; 
+        tsc_all_flows_p->dp_handle       = next_nwservice_sel_1_instance_p->system_br_saferef;
+        tsc_all_flows_p->match_vlan_id   = next_nwservice_sel_1_instance_p->vlan_id_in;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_1_instance_p->vlan_id_in;
+        tsc_all_flows_p->vlan_id_pkt     = next_nwservice_sel_1_instance_p->vlan_id_in;
+        tsc_all_flows_p->out_port_no     = next_nwservice_sel_1_instance_p->port1_id;
         tsc_all_flows_p->copy_local_mac_addresses_b     = TRUE;
         tsc_all_flows_p->copy_original_mac_addresses_b  = FALSE;
         tsc_all_flows_p->nw_port_b                      = FALSE;
@@ -953,15 +1155,15 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
         /* Two services are on same switch. Push two flows F1 and F2 to table 1  */ 
         /* Both the services contain the same dp_handle as br-int bridge is used */
         
-        tsc_all_flows_p->selector_type = SELECTOR_PRIMARY;
-        tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-        tsc_all_flows_p->pkt_origin    = VM_NS;
-        tsc_all_flows_p->dp_handle     = first_nwservice_sel_1_instance_p->system_br_saferef; 
-        tsc_all_flows_p->inport_id     = first_nwservice_sel_1_instance_p->port_id;
-        tsc_all_flows_p->match_vlan_id = first_nwservice_sel_1_instance_p->vlan_id_out;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_1_instance_p->vlan_id_in; 
-        tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_1_instance_p->vlan_id_out;
-        tsc_all_flows_p->out_port_no   = next_nwservice_sel_1_instance_p->port_id;
+        tsc_all_flows_p->sel_type_swap_e = SEL_PRIMARY;
+        tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+        tsc_all_flows_p->pkt_origin      = VM_NS;
+        tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef; 
+        tsc_all_flows_p->inport_id       = first_nwservice_sel_1_instance_p->port1_id;
+        tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_1_instance_p->vlan_id_out;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_1_instance_p->vlan_id_in; 
+        tsc_all_flows_p->vlan_id_pkt     = first_nwservice_sel_1_instance_p->vlan_id_out;
+        tsc_all_flows_p->out_port_no     = next_nwservice_sel_1_instance_p->port1_id;
         tsc_all_flows_p->copy_local_mac_addresses_b       = FALSE;
         tsc_all_flows_p->copy_original_mac_addresses_b    = FALSE;
         tsc_all_flows_p->nw_port_b                        = FALSE;
@@ -972,15 +1174,15 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
                                     first_nwservice_sel_1_instance_p,
                                     &repository_entry_1_p);
 
-        tsc_all_flows_p->selector_type = SELECTOR_PRIMARY;
-        tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-        tsc_all_flows_p->pkt_origin    = VM_NS;
-        tsc_all_flows_p->dp_handle     = first_nwservice_sel_1_instance_p->system_br_saferef;
-        tsc_all_flows_p->inport_id     = first_nwservice_sel_1_instance_p->port_id;
-        tsc_all_flows_p->match_vlan_id = next_nwservice_sel_1_instance_p->vlan_id_in;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_1_instance_p->vlan_id_in;
-        tsc_all_flows_p->vlan_id_pkt   = next_nwservice_sel_1_instance_p->vlan_id_in;
-        tsc_all_flows_p->out_port_no   = next_nwservice_sel_1_instance_p->port_id;
+        tsc_all_flows_p->sel_type_swap_e = SEL_PRIMARY;
+        tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+        tsc_all_flows_p->pkt_origin      = VM_NS;
+        tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef;
+        tsc_all_flows_p->inport_id       = first_nwservice_sel_1_instance_p->port1_id;
+        tsc_all_flows_p->match_vlan_id   = next_nwservice_sel_1_instance_p->vlan_id_in;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_1_instance_p->vlan_id_in;
+        tsc_all_flows_p->vlan_id_pkt     = next_nwservice_sel_1_instance_p->vlan_id_in;
+        tsc_all_flows_p->out_port_no     = next_nwservice_sel_1_instance_p->port1_id;
         tsc_all_flows_p->copy_local_mac_addresses_b       = FALSE;
         tsc_all_flows_p->copy_original_mac_addresses_b    = FALSE;
         tsc_all_flows_p->nw_port_b                        = FALSE;
@@ -1004,15 +1206,15 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
   {
     /*Using first_service push flow F6 on Table 1 so that it goes to table 3 in the same switch as there are no more services. */
     /* To be done for both sel_1 and sel_2 as the number of services is same */
-    tsc_all_flows_p->selector_type = SELECTOR_PRIMARY;
-    tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-    tsc_all_flows_p->pkt_origin    = VM_NS;
-    tsc_all_flows_p->dp_handle     = first_nwservice_sel_1_instance_p->system_br_saferef;
-    tsc_all_flows_p->inport_id     = first_nwservice_sel_1_instance_p->port_id;
-    tsc_all_flows_p->match_vlan_id = first_nwservice_sel_1_instance_p->vlan_id_out;
-    tsc_all_flows_p->next_vlan_id  = 0;
-    tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_1_instance_p->vlan_id_out;
-    tsc_all_flows_p->out_port_no   = 0;
+    tsc_all_flows_p->sel_type_swap_e = SEL_PRIMARY;
+    tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+    tsc_all_flows_p->pkt_origin      = VM_NS;
+    tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef;
+    tsc_all_flows_p->inport_id       = first_nwservice_sel_1_instance_p->port1_id;
+    tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_1_instance_p->vlan_id_out;
+    tsc_all_flows_p->next_vlan_id    = 0;
+    tsc_all_flows_p->vlan_id_pkt     = first_nwservice_sel_1_instance_p->vlan_id_out;
+    tsc_all_flows_p->out_port_no     = 0;
     tsc_all_flows_p->copy_local_mac_addresses_b      = FALSE;
     tsc_all_flows_p->copy_original_mac_addresses_b   = TRUE;
     tsc_all_flows_p->nw_port_b                       = FALSE;
@@ -1029,13 +1231,13 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
                                         first_nwservice_sel_1_instance_p,
                                         use_dstmac);
     */ 
+#if 0
     use_dstmac = FALSE;
     tsc_nsc_send_proactive_flow_table_3(nschain_repository_entry_p,
                                         first_nwservice_sel_1_instance_p,
                                         use_dstmac);
-                                           
+#endif                                           
   }
-
   retval = nsrm_get_nwservice_instance_byhandle(first_service_sel_2_p->nschain_object_handle,
                                                 first_service_sel_2_p->nwservice_object_handle,
                                                 first_service_sel_2_p->nwservice_instance_handle,
@@ -1084,14 +1286,14 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
         /* Two services are on different switches. Push F3 using table 1 on first switch and F4 using table 2 on next switch. */
         /* Their dp_hanldes are obtained from their nw_instances */
       
-        tsc_all_flows_p->selector_type = SELECTOR_SECONDARY;
-        tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-        tsc_all_flows_p->pkt_origin    = VM_NS;
-        tsc_all_flows_p->dp_handle     = first_nwservice_sel_2_instance_p->system_br_saferef;
-        tsc_all_flows_p->inport_id     = first_nwservice_sel_2_instance_p->port_id;
-        tsc_all_flows_p->match_vlan_id = first_nwservice_sel_2_instance_p->vlan_id_in;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_2_instance_p->vlan_id_out;
-        tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_2_instance_p->vlan_id_in;
+        tsc_all_flows_p->sel_type_swap_e = SEL_SECONDARY;
+        tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+        tsc_all_flows_p->pkt_origin      = VM_NS;
+        tsc_all_flows_p->dp_handle       = first_nwservice_sel_2_instance_p->system_br_saferef;
+        tsc_all_flows_p->inport_id       = first_nwservice_sel_2_instance_p->port1_id;
+        tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_2_instance_p->vlan_id_in;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_2_instance_p->vlan_id_out;
+        tsc_all_flows_p->vlan_id_pkt     = first_nwservice_sel_2_instance_p->vlan_id_in;
         tsc_all_flows_p->copy_local_mac_addresses_b       = FALSE;
         tsc_all_flows_p->copy_original_mac_addresses_b    = TRUE;
         tsc_all_flows_p->nw_port_b                        = TRUE;
@@ -1148,14 +1350,14 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
           return OF_FAILURE;
         }
 
-        tsc_all_flows_p->selector_type = SELECTOR_SECONDARY;
-        tsc_all_flows_p->table_no      = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
-        tsc_all_flows_p->pkt_origin    = NW_BROADCAST_SIDE;
-        tsc_all_flows_p->dp_handle     = next_nwservice_sel_2_instance_p->system_br_saferef;
-        tsc_all_flows_p->match_vlan_id = next_nwservice_sel_2_instance_p->vlan_id_out;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_2_instance_p->vlan_id_out;
-        tsc_all_flows_p->vlan_id_pkt   = next_nwservice_sel_2_instance_p->vlan_id_out ;
-        tsc_all_flows_p->out_port_no   = next_nwservice_sel_2_instance_p->port_id;
+        tsc_all_flows_p->sel_type_swap_e = SEL_SECONDARY;
+        tsc_all_flows_p->table_no        = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
+        tsc_all_flows_p->pkt_origin      = NW_BROADCAST_SIDE;
+        tsc_all_flows_p->dp_handle       = next_nwservice_sel_2_instance_p->system_br_saferef;
+        tsc_all_flows_p->match_vlan_id   = next_nwservice_sel_2_instance_p->vlan_id_out;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_2_instance_p->vlan_id_out;
+        tsc_all_flows_p->vlan_id_pkt     = next_nwservice_sel_2_instance_p->vlan_id_out ;
+        tsc_all_flows_p->out_port_no     = next_nwservice_sel_2_instance_p->port1_id;
         tsc_all_flows_p->copy_local_mac_addresses_b       = TRUE;
         tsc_all_flows_p->copy_original_mac_addresses_b    = FALSE;
         tsc_all_flows_p->nw_port_b                        = FALSE;
@@ -1173,15 +1375,15 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
         /* Both the services contain the same dp_handle as br-int bridge is used */
         /* first_nwservice_instance_p->system_br_saferef */
       
-        tsc_all_flows_p->selector_type = SELECTOR_SECONDARY;
-        tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-        tsc_all_flows_p->pkt_origin    = VM_NS;
-        tsc_all_flows_p->dp_handle     = first_nwservice_sel_2_instance_p->system_br_saferef;    
-        tsc_all_flows_p->inport_id     = first_nwservice_sel_2_instance_p->port_id;
-        tsc_all_flows_p->match_vlan_id = first_nwservice_sel_2_instance_p->vlan_id_in;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_2_instance_p->vlan_id_out;
-        tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_2_instance_p->vlan_id_in;
-        tsc_all_flows_p->out_port_no   = next_nwservice_sel_2_instance_p->port_id;
+        tsc_all_flows_p->sel_type_swap_e = SEL_SECONDARY;
+        tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+        tsc_all_flows_p->pkt_origin      = VM_NS;
+        tsc_all_flows_p->dp_handle       = first_nwservice_sel_2_instance_p->system_br_saferef;    
+        tsc_all_flows_p->inport_id       = first_nwservice_sel_2_instance_p->port1_id;
+        tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_2_instance_p->vlan_id_in;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_2_instance_p->vlan_id_out;
+        tsc_all_flows_p->vlan_id_pkt     = first_nwservice_sel_2_instance_p->vlan_id_in;
+        tsc_all_flows_p->out_port_no     = next_nwservice_sel_2_instance_p->port1_id;
         tsc_all_flows_p->copy_local_mac_addresses_b       = FALSE;
         tsc_all_flows_p->copy_original_mac_addresses_b    = FALSE;
         tsc_all_flows_p->nw_port_b                        = FALSE;
@@ -1192,15 +1394,15 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
                                     first_nwservice_sel_2_instance_p,
                                     &repository_entry_1_p);
       
-        tsc_all_flows_p->selector_type = SELECTOR_SECONDARY;
-        tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-        tsc_all_flows_p->pkt_origin    = VM_NS;
-        tsc_all_flows_p->dp_handle     = first_nwservice_sel_2_instance_p->system_br_saferef;
-        tsc_all_flows_p->inport_id     = first_nwservice_sel_2_instance_p->port_id;
-        tsc_all_flows_p->match_vlan_id = next_nwservice_sel_2_instance_p->vlan_id_out;
-        tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_2_instance_p->vlan_id_out;
-        tsc_all_flows_p->vlan_id_pkt   = next_nwservice_sel_2_instance_p->vlan_id_out;
-        tsc_all_flows_p->out_port_no   = next_nwservice_sel_2_instance_p->port_id;
+        tsc_all_flows_p->sel_type_swap_e = SEL_SECONDARY;
+        tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+        tsc_all_flows_p->pkt_origin      = VM_NS;
+        tsc_all_flows_p->dp_handle       = first_nwservice_sel_2_instance_p->system_br_saferef;
+        tsc_all_flows_p->inport_id       = first_nwservice_sel_2_instance_p->port1_id;
+        tsc_all_flows_p->match_vlan_id   = next_nwservice_sel_2_instance_p->vlan_id_out;
+        tsc_all_flows_p->next_vlan_id    = next_nwservice_sel_2_instance_p->vlan_id_out;
+        tsc_all_flows_p->vlan_id_pkt     = next_nwservice_sel_2_instance_p->vlan_id_out;
+        tsc_all_flows_p->out_port_no     = next_nwservice_sel_2_instance_p->port1_id;
         tsc_all_flows_p->copy_local_mac_addresses_b       = FALSE;
         tsc_all_flows_p->copy_original_mac_addresses_b    = FALSE;
         tsc_all_flows_p->nw_port_b                        = FALSE;
@@ -1224,44 +1426,44 @@ int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_
     /*Using first_service push flow F6 on Table 1 so that it goes to table 3 in the same switch as there are no more services. */ 
     /* To be done for both sel_1 and sel_2 as the number of services is same */
 
-    tsc_all_flows_p->selector_type = SELECTOR_SECONDARY;
-    tsc_all_flows_p->table_no      = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
-    tsc_all_flows_p->pkt_origin    = VM_NS;
-    tsc_all_flows_p->dp_handle     = first_nwservice_sel_2_instance_p->system_br_saferef;  
-    tsc_all_flows_p->inport_id     = first_nwservice_sel_2_instance_p->port_id;
-    tsc_all_flows_p->match_vlan_id = first_nwservice_sel_2_instance_p->vlan_id_in;
-    tsc_all_flows_p->next_vlan_id  = 0;
-    tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_2_instance_p->vlan_id_in;
-    tsc_all_flows_p->out_port_no   = 0;
+    tsc_all_flows_p->sel_type_swap_e = SEL_SECONDARY;
+    tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
+    tsc_all_flows_p->pkt_origin      = VM_NS;
+    tsc_all_flows_p->dp_handle       = first_nwservice_sel_2_instance_p->system_br_saferef;  
+    tsc_all_flows_p->inport_id       = first_nwservice_sel_2_instance_p->port1_id;
+    tsc_all_flows_p->match_vlan_id   = first_nwservice_sel_2_instance_p->vlan_id_in;
+    tsc_all_flows_p->next_vlan_id    = 0;
+    tsc_all_flows_p->vlan_id_pkt     = first_nwservice_sel_2_instance_p->vlan_id_in;
+    tsc_all_flows_p->out_port_no     = 0;
     tsc_all_flows_p->copy_local_mac_addresses_b      = FALSE;
     tsc_all_flows_p->copy_original_mac_addresses_b   = TRUE;
     tsc_all_flows_p->nw_port_b                       = FALSE;
      
-    /* This F6 Flow is giving problems if we push.pushing looks to be successful. */
-#if 1
     tsc_nsc_send_proactive_flow(nschain_repository_entry_p,
                                 tsc_all_flows_p,
                                 first_nwservice_sel_2_instance_p,
                                 &repository_entry_1_p);
-#endif     
     /* Add a flow to Table 3 */
-     
+
+#if 0     
      use_dstmac = TRUE;
      tsc_nsc_send_proactive_flow_table_3(nschain_repository_entry_p,
                                          first_nwservice_sel_2_instance_p,
                                          use_dstmac);
-#if 0
+#endif
+
+/*
      use_dstmac = FALSE;
 
      tsc_nsc_send_proactive_flow_table_3(nschain_repository_entry_p,
                                          first_nwservice_sel_2_instance_p,
                                          use_dstmac);
-#endif
+*/                                         
   }    
     CNTLR_RCU_READ_LOCK_RELEASE();
     return retval;
 }
-#endif
+
 int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_repository_entry_first_p,
                                     struct    tsa_all_flows_members* tsc_flow_p,
                                     struct    nwservice_instance *nw_service_p,
@@ -1325,7 +1527,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
   nsc_repository_entry_p->selector.ethernet_type = nschain_repository_entry_first_p->selector.ethernet_type;
   nsc_repository_entry_p->selector.protocol      = nschain_repository_entry_first_p->selector.protocol;
 
-  if(tsc_flow_p->selector_type == SELECTOR_PRIMARY)
+  if(tsc_flow_p->sel_type_swap_e == SEL_PRIMARY)
   {
     nsc_repository_entry_p->selector.selector_type = SELECTOR_PRIMARY;
     nsc_repository_entry_p->selector.src_ip  = nschain_repository_entry_first_p->selector.src_ip;
@@ -1344,7 +1546,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
       nsc_repository_entry_p->selector.dst_port = nschain_repository_entry_first_p->selector.dst_port; 
     }  
   }    
-  else if (tsc_flow_p->selector_type == SELECTOR_SECONDARY)
+  else if (tsc_flow_p->sel_type_swap_e == SEL_SECONDARY)
   {
     nsc_repository_entry_p->selector.selector_type = SELECTOR_SECONDARY;
     nsc_repository_entry_p->selector.src_ip  = nschain_repository_entry_first_p->selector.dst_ip;
@@ -1363,6 +1565,25 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
       nsc_repository_entry_p->selector.dst_port = nschain_repository_entry_first_p->selector.src_port;
     }  
   }
+  else if (tsc_flow_p->sel_type_swap_e == SEL_SECONDARY_NOSWAP)
+  {
+    nsc_repository_entry_p->selector.selector_type = SELECTOR_SECONDARY;
+    nsc_repository_entry_p->selector.src_ip  = nschain_repository_entry_first_p->selector.src_ip;
+    nsc_repository_entry_p->selector.dst_ip  = nschain_repository_entry_first_p->selector.dst_ip;
+
+    if(nsc_repository_entry_p->selector.protocol == OF_IPPROTO_ICMP)
+    {
+      nsc_repository_entry_p->selector.icmp_type = 0;
+      nsc_repository_entry_p->selector.icmp_code = 0;
+      nsc_repository_entry_p->selector.src_port  = 0;
+      nsc_repository_entry_p->selector.dst_port  = 0;
+    }
+    else
+    {
+      nsc_repository_entry_p->selector.src_port = nschain_repository_entry_first_p->selector.src_port;
+      nsc_repository_entry_p->selector.dst_port = nschain_repository_entry_first_p->selector.dst_port;
+    }
+  }    
  
   if(tsc_flow_p->table_no == TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1)
   {
@@ -1409,7 +1630,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
        ((tsc_flow_p->vlan_id_pkt != nsc_repository_scan_node_p->vlan_id_pkt))
      )
        continue;
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"T1 or T2 nsc repository entry is already existing,skipping proactive push");
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"T1 or T2 nsc repository entry is already existing,skipping proactive push");
      //printf("\r\n PPH-18");
      printf("z");
      retval = mempool_release_mem_block(nsc_repository_mempool_g,
@@ -1424,7 +1645,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
   nsc_repository_entry_p->selector.magic          = nschain_repository_entry_first_p->selector.magic;
   nsc_repository_entry_p->selector.safe_reference = nschain_repository_entry_first_p->selector.safe_reference;
  
-  if(tsc_flow_p->selector_type == SELECTOR_PRIMARY)
+  if((tsc_flow_p->sel_type_swap_e == SEL_PRIMARY) || (tsc_flow_p->sel_type_swap_e == SEL_SECONDARY_NOSWAP))
   {
     nsc_repository_entry_p->selector.other_selector_p = (nschain_repository_entry_first_p->selector.other_selector_p);
     for(ii=0; ii<6; ii++)
@@ -1439,7 +1660,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
     nsc_repository_entry_p->selector.src_mac_high   = nschain_repository_entry_first_p->selector.src_mac_high; 
     nsc_repository_entry_p->selector.src_mac_low    = nschain_repository_entry_first_p->selector.src_mac_low; 
   }
-  else if(tsc_flow_p->selector_type == SELECTOR_SECONDARY)
+  else if(tsc_flow_p->sel_type_swap_e == SEL_SECONDARY)
   {
     nsc_repository_entry_p->selector.other_selector_p = (&(nschain_repository_entry_first_p->selector));  
     for(ii=0; ii<6; ii++)
@@ -1465,7 +1686,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
   nsc_repository_entry_p->pkt_origin    = tsc_flow_p->pkt_origin;
   nsc_repository_entry_p->dp_handle     = tsc_flow_p->dp_handle;
  
-  nsc_repository_entry_p->flow_mod_priority = 2;
+  nsc_repository_entry_p->flow_mod_priority = 2; /* 1; */
   nsc_repository_entry_p->skip_this_entry   = 0;
   
   nsc_repository_entry_p->next_vlan_id                  = tsc_flow_p->next_vlan_id;  
@@ -1474,6 +1695,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
   nsc_repository_entry_p->selector.vlan_id_pkt          = tsc_flow_p->vlan_id_pkt; 
   nsc_repository_entry_p->copy_local_mac_addresses_b    = tsc_flow_p->copy_local_mac_addresses_b; 
   nsc_repository_entry_p->copy_original_mac_addresses_b = tsc_flow_p->copy_original_mac_addresses_b; 
+  nsc_repository_entry_p->zone                          = nschain_repository_entry_first_p->zone;
 
   if(tsc_flow_p->out_port_no != 0)
   {   
@@ -1605,7 +1827,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
     }
     else
     {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Successfully sent Flow Mod message to Table 1 proactively ");
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully sent Flow Mod message to Table 1 proactively ");
     }    
   }
   else if(tsc_flow_p->table_no == TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2)
@@ -1620,7 +1842,7 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
     }
     else
     {
-        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Successfully sent Flow Mod message to Table 2 proactively ");
+        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully sent Flow Mod message to Table 2 proactively ");
     }    
   }
   retval = OF_SUCCESS;
@@ -1704,7 +1926,7 @@ int32_t tsc_nsc_send_proactive_flow_table_3(struct    nschain_repository_entry* 
       )
       continue;
 
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"table_3 ucastpkt_outport repository entry found,skipping proactive push");
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"table_3 ucastpkt_outport repository entry found,skipping proactive push");
      //printf("\r\n table_3 ucastpkt_outport repository entry found,skipping proactive push");  
      //printf("dst_mac_low = %x",dst_mac_low);
      return OF_SUCCESS;
@@ -1815,7 +2037,7 @@ int32_t tsc_nsc_send_proactive_flow_table_3(struct    nschain_repository_entry* 
      return OF_FAILURE;
    }
 
-   ucastpkt_outport_repository_entry_p->priority = 2;
+   ucastpkt_outport_repository_entry_p->priority = 1; /* 2; */
    /* Add to the table 3 repository table */
    offset = NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
    hashobj_p = (uchar8_t *)(ucastpkt_outport_repository_entry_p) + offset;
@@ -1848,8 +2070,9 @@ int32_t tsc_nsc_send_proactive_flow_table_3(struct    nschain_repository_entry* 
    }
    else
    {
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Successfully sent Flow Mod message to Table 3 proactively ");
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG," Successfully sent Flow Mod message to Table 3 proactively ");
    }    
    return OF_SUCCESS;
 }
 /****************************************************************************************************************************************/
+

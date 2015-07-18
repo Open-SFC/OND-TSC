@@ -87,6 +87,7 @@ void nsc_l2_service_map_notifications_del_cbk(uint8_t   notification_type,
   vn_nsc_info_p->srf_nschainset_object  = 0;
 }
 
+/*GPSYS this function is modified with 2 ports support*/
 void nsc_l2_nwservice_object_launched_cbk(uint8_t   notification_type,
                                           uint64_t  nwservice_object_saferef,
                                           union     nsrm_nwservice_object_notification_data notification_data,
@@ -96,36 +97,122 @@ void nsc_l2_nwservice_object_launched_cbk(uint8_t   notification_type,
   struct  crm_port* port_info_p = NULL;
   int32_t retval = OF_SUCCESS;
 
+  //printf("\r\n nsc_l2_nwservice_object_launched_cbk is called");
+  
+#if 0
+  /****TBD NSM testing 2 port S-VM using 1 port S-VM */
+  notification_data.launch.no_of_ports = 1;
+  /***************************************************/
+#endif
+
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "nsc_l2_nwservice_object_launched_cbk is called");
   
-  CNTLR_RCU_READ_LOCK_TAKE(); 
-  retval = crm_get_port_byhandle(notification_data.launch.port_handle,&port_info_p);
-  port_info_p->vlan_id_in  = notification_data.launch.vlan_id_in;
-  port_info_p->vlan_id_out = notification_data.launch.vlan_id_out;
+  if(notification_data.launch.no_of_ports == 1)
+  {  
+    CNTLR_RCU_READ_LOCK_TAKE(); 
+    retval = crm_get_port_byhandle(notification_data.launch.port1_saferef,&port_info_p);
+    port_info_p->vlan_id_in  = notification_data.launch.vlan_id_in;
+    port_info_p->vlan_id_out = notification_data.launch.vlan_id_out;
 
-  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "switch name = %s",port_info_p->switch_name);
-  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_in  = %d",notification_data.launch.vlan_id_in);
-  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_out = %d",notification_data.launch.vlan_id_out);
-  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "port_id     = %d",port_info_p->port_id);
+    OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "switch name = %s",port_info_p->switch_name);
+    OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_in  = %d",notification_data.launch.vlan_id_in);
+    OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_out = %d",notification_data.launch.vlan_id_out);
+    OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "port_id     = %d",port_info_p->port_id);
 
-  CNTLR_RCU_READ_LOCK_RELEASE();  
-
-  if(retval == CRM_SUCCESS)
-  {
-    OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "Before adding VM_NS ports to classification table");
-    tsc_add_vmport_flows_to_classify_table(port_info_p->saferef_vn,
-                                           port_info_p->switch_name,
-                                           port_info_p->crm_port_type,
-                                           port_info_p->port_id,
-                                           notification_data.launch.vlan_id_in,
-                                           notification_data.launch.vlan_id_out,
-                                           port_info_p->system_br_saferef);
-    OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "After  adding VM_NS ports to classification table");    
+    if(retval == CRM_SUCCESS)
+    {
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "Before adding VM_NS ports to classification table");
+      tsc_add_vmport_flows_to_classify_table(port_info_p->saferef_vn,
+                                             port_info_p->switch_name,
+                                             port_info_p->crm_port_type,
+                                             port_info_p->port_id,
+                                             notification_data.launch.vlan_id_in,
+                                             notification_data.launch.vlan_id_out,
+                                             port_info_p->system_br_saferef);
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "After  adding VM_NS ports to classification table");    
+    }
+    else
+    {
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_ERROR, "Failed to get the VM_NS Port");
+      printf("\r\n Failed to get VM_NS port of type = %d",port_info_p->crm_port_type);
+    }
+    CNTLR_RCU_READ_LOCK_RELEASE();
   }
-  else
+  else if(notification_data.launch.no_of_ports == 2)
   {
-    OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_ERROR, "Failed to get the VM_NS Port");
-  } 
+    CNTLR_RCU_READ_LOCK_TAKE();
+    retval = crm_get_port_byhandle(notification_data.launch.port1_saferef,&port_info_p);
+    if(retval == CRM_SUCCESS)
+    {
+      if(port_info_p->crm_port_type == VMNS_IN_PORT)
+      {
+        port_info_p->vlan_id_in  = notification_data.launch.vlan_id_in;
+        port_info_p->vlan_id_out = 0;
+      }
+      else
+      {
+        port_info_p->vlan_id_in  = 0;
+        port_info_p->vlan_id_out = notification_data.launch.vlan_id_out;
+      }
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "switch name = %s",port_info_p->switch_name);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_in  = %d",notification_data.launch.vlan_id_in);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_out = %d",notification_data.launch.vlan_id_out);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "port_id     = %d",port_info_p->port_id);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "port_type   = %d",port_info_p->crm_port_type);
+
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "Before adding VM_NS_IN or VM_NS_OUT port to classification table");
+      tsc_add_vmport_flows_to_classify_table(port_info_p->saferef_vn,
+                                             port_info_p->switch_name,
+                                             port_info_p->crm_port_type,
+                                             port_info_p->port_id,
+                                             port_info_p->vlan_id_in,
+                                             port_info_p->vlan_id_out,
+                                             port_info_p->system_br_saferef);
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "After  adding VM_NS_IN or VM_NS_OUT ports to classification table");
+    }
+    else
+    {
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_ERROR, "Failed to get VM_NS port of type = %d",port_info_p->crm_port_type);
+      printf("\r\n Failed to get VM_NS port of type = %d",port_info_p->crm_port_type);
+    }
+    
+    retval = crm_get_port_byhandle(notification_data.launch.port2_saferef,&port_info_p);
+    if(retval == CRM_SUCCESS)
+    {
+      if(port_info_p->crm_port_type == VMNS_IN_PORT)
+      {
+        port_info_p->vlan_id_in  = notification_data.launch.vlan_id_in;
+        port_info_p->vlan_id_out = 0;
+      }
+      else
+      {
+        port_info_p->vlan_id_in   = 0;
+        port_info_p->vlan_id_out  = notification_data.launch.vlan_id_out;
+      }
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "switch name = %s",port_info_p->switch_name);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_in  = %d",notification_data.launch.vlan_id_in);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "vlan_id_out = %d",notification_data.launch.vlan_id_out);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "port_id     = %d",port_info_p->port_id);
+      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG, "port_type   = %d",port_info_p->crm_port_type);
+
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "Before adding VM_NS_IN or VM_NS_OUT port to classification table");
+      tsc_add_vmport_flows_to_classify_table(port_info_p->saferef_vn,
+                                             port_info_p->switch_name,
+                                             port_info_p->crm_port_type,
+                                             port_info_p->port_id,
+                                             port_info_p->vlan_id_in,
+                                             port_info_p->vlan_id_out,
+                                             port_info_p->system_br_saferef);
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "After  adding VM_NS_IN or VM_NS_OUT ports to classification table");
+    }
+    else
+    {
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_ERROR, "Failed to get the VM_NS port of type = %d",port_info_p->crm_port_type);
+      printf("\r\n Failed to get the VM_NS port of type = %d",port_info_p->crm_port_type);
+    }
+
+    CNTLR_RCU_READ_LOCK_RELEASE();
+  }
   /* IMPORTANT TBD:  The problem with this approach is that,by this time datapath might have discconected from the OF controller temporarily. */
   /* We may need to queue such data and add the flows whenever the datapath connects back. */
   /* A network service instance may be launched at any time. */

@@ -427,7 +427,8 @@ int32_t tsc_vxn_add_nwport_flows(char*    swname_p,
             tsc_params_p->in_port_id   = port_id;
 
           #if 1  
-            if(port_info_p->crm_port_type == VMNS_PORT) 
+            if((port_info_p->crm_port_type == VMNS_PORT) || (port_info_p->crm_port_type == VMNS_IN_PORT) ||
+                                                            (port_info_p->crm_port_type == VMNS_OUT_PORT))  
             {
               tsc_params_p->vlan_id_in  = port_info_p->vlan_id_in;
               tsc_params_p->vlan_id_out = port_info_p->vlan_id_out;

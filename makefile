@@ -34,5 +34,6 @@ clean:
 	$(RM) $(TARGET_LIB) $(TARGET_ULIB)
 
 install:
-	sudo cp $(TARGET_LIB) $(OND_OF_DRVR_INST_DIR)/lib/apps 
-	sudo cp $(TARGET_ULIB) $(OND_OF_DRVR_INST_DIR)/lib/apps 
+	sudo cp $(TARGET_LIB) $(ondir_platform_inst_dir)/lib/apps 
+	sudo cp $(TARGET_ULIB) $(ondir_platform_inst_dir)/lib/apps 
+	sudo cp tsc.conf $(ondir_platform_inst_dir)/lib/apps 

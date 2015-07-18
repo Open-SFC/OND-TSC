@@ -148,12 +148,12 @@ ofu_push_set_ipv4_tun_dst_addr_in_set_field_action(struct of_msg *msg,
   msg_desc = &msg->desc;
 
 
-  if( (msg_desc->ptr1+msg_desc->length1+OFU_SET_FIELD_WITH_IPV4_DST_FIELD_ACTION_LEN) >
-      (msg->desc.start_of_data + msg_desc->buffer_len)   )
-     {
-       OF_LOG_MSG(OF_LOG_MOD, OF_LOG_WARN,"%s %d :Length of buffer is not sufficient to add data\r\n",__FUNCTION__,__LINE__);
-       return OFU_NO_ROOM_IN_BUFFER;
-     }
+  //if( (msg_desc->ptr1+msg_desc->length1+OFU_SET_FIELD_WITH_IPV4_DST_FIELD_ACTION_LEN) >
+  //    (msg->desc.start_of_data + msg_desc->buffer_len)   )
+  //   {
+  //     OF_LOG_MSG(OF_LOG_MOD, OF_LOG_WARN,"%s %d :Length of buffer is not sufficient to add data\r\n",__FUNCTION__,__LINE__);
+  //     return OFU_NO_ROOM_IN_BUFFER;
+  //   }
      set_field = (struct ofp_action_set_field *)(msg_desc->ptr3+msg_desc->length3);
      set_field->type = htons(OFPAT_SET_FIELD);
      set_field->len  = htons(OFU_SET_FIELD_WITH_IPV4_DST_FIELD_ACTION_LEN + padding_bytes);

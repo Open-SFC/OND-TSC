@@ -19,7 +19,7 @@
 
 include ../rules.mk
 
-SHARED_LIB = $(OND_OF_LIB_DIR)/apps
+SHARED_LIB = $(ond_pf_lib_dir)/apps
 
 TARGET = $(BIN_DIR)/ucmtsccbk.o
 

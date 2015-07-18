@@ -48,8 +48,6 @@ extern   uint32_t  nsc_no_of_repository_table_1_buckets_g;
 extern   uint32_t  nsc_no_of_repository_table_2_buckets_g;
 extern   uint32_t  nsc_no_of_repository_table_3_buckets_g;
 
-uint32_t nwnode_dhcp_ip = 0; 
-
 struct tsc_nvm_module_interface tsc_nvm_modules[SUPPORTED_NW_TYPE_MAX + 1];
 
 int32_t tsc_add_unicast_nwport_flows_to_classify_table(uint64_t vn_handle, 
@@ -79,7 +77,9 @@ struct table_barrier_msg
 {
   uint64_t dp_handle;
   int32_t  in_port;
-  struct   ofl_packet_in* pkt_in;
+  struct   of_msg* msg;
+  uint8_t* packet; 
+  uint16_t packet_length;
 };
 /*******************************************************************************************************
 Function Name    :tsc_delete_vmport_flows_from_classify_table
@@ -122,6 +122,7 @@ Input  Parameters:
         dp_handle    :datapath handle of the Logical switch
 Output Parameters:NONE
 Description: Add Flows proactively to classify table for VM and VM_NS ports.
+             GPSYS: crm_port_type is now checked with the new VM_NS port types.  
 ****************************************************************************************************/
 int32_t tsc_add_vmport_flows_to_classify_table(uint64_t vn_handle,
                                                char*    swname_p,
@@ -162,7 +163,7 @@ int32_t tsc_add_vmport_flows_to_classify_table(uint64_t vn_handle,
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, " PKT-IN METADATA1 =%llx",tsc_params_vm_p->metadata); 
   tsc_params_vm_p->metadata_mask = 0xFFFFFFFFFFFFFFFF;    
 
-  if(crm_port_type == VM_NS)
+  if((crm_port_type == VM_NS) || (crm_port_type == VMNS_IN_PORT) || (crm_port_type == VMNS_OUT_PORT))
   {
     tsc_params_vm_p->vlan_id_in  = vlan_id_in;
     tsc_params_vm_p->vlan_id_out = vlan_id_out;
@@ -387,10 +388,11 @@ Description:Miss Packet received from OF Table 1 of a logical switch whose handl
             Table_1 and Table_2 are used for service chaining purpose.   
 *******************************************************************************************************/
 int32_t tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(uint64_t dp_handle,
-                                                           struct ofl_packet_in* pkt_in,
-                                                           uint32_t in_port_id,
-                                                           uint64_t metadata
-                                                           )
+                                                          struct   ofl_packet_in* pkt_in,
+                                                          struct   of_msg* msg,
+                                                          uint32_t in_port_id,
+                                                          uint64_t metadata
+                                                         )
 {
   struct    nschain_repository_entry  nschain_repository_entry;
   struct    nschain_repository_entry* out_bound_nschain_repository_entry_p;
@@ -401,14 +403,13 @@ int32_t tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(uint64_t dp_handle,
   uint8_t   pkt_origin,nsc_copy_mac_addresses_b;
   uint32_t  nid;
   uint32_t  retval = OF_FAILURE;
-  uint8_t   table_id,add_status = OF_FAILURE;
+  uint8_t   selector_type,table_id,add_status = OF_FAILURE;
  
   uint32_t  hashkey,hashmask;
   struct    nsc_selector_node  selector;
   struct    nsc_selector_node* selector_p;
 
-  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Miss Packet received by Table_1"); 
-  table_1_barrier = (struct    table_barrier_msg*)calloc(1,sizeof(struct    table_barrier_msg));
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Miss Packet received by Table_1"); 
 
   out_bound_nschain_repository_entry_p = &nschain_repository_entry;
 
@@ -479,14 +480,18 @@ int32_t tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(uint64_t dp_handle,
         table_id = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
         tsc_delete_nschain_repository_entry(out_bound_nschain_repository_entry_p,nw_type,nid,table_id); /* NSME */
       }
-      /* Drop the packet */
+      return OF_FAILURE;
     }
-    else
+    if(selector_p->nsc_entry_present == 0)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Sending Packet out message for Table 1");
-      table_1_barrier->dp_handle = dp_handle;
-      table_1_barrier->in_port   = in_port_id;
-      table_1_barrier->pkt_in    = pkt_in;
+      table_1_barrier = (struct table_barrier_msg*)calloc(1,sizeof(struct table_barrier_msg));
+      table_1_barrier->dp_handle     = dp_handle;
+      table_1_barrier->in_port       = in_port_id;
+      table_1_barrier->msg           = msg;
+      table_1_barrier->packet        = pkt_in->packet;
+      table_1_barrier->packet_length = pkt_in->packet_length;
+
       retval = of_send_barrier_request_msg(dp_handle,
                                          tsc_barrier_reply_notification_fn,
                                          table_1_barrier,NULL);
@@ -494,21 +499,50 @@ int32_t tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(uint64_t dp_handle,
       if(retval != OF_SUCCESS)
       {
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"barrier request for table 1 failed");
-        retval = tsc_send_pktout_1_3_msg(dp_handle,in_port_id,pkt_in);
+        retval = tsc_send_pktout_1_3_msg(dp_handle,in_port_id,pkt_in->packet,pkt_in->packet_length);
         if(retval == OF_FAILURE)
-         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Failed to send Packet out message for Table 1");
+        {
+          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Failed to send Packet out message for Table 1");
+        } 
+        return OF_FAILURE; 
       }
+   }
+   else
+   {
+     selector_p->nsc_entry_present = 0;
+     if(msg != NULL)
+       msg->desc.free_cbk(msg);  /* Normally it is released in barrier response callback */
    }
    /* proactive flow pushing */
 #if 1
-   if((out_bound_nschain_repository_entry_p->pkt_origin == VM_APPLN) && (out_bound_nschain_repository_entry_p->selector.selector_type == SELECTOR_PRIMARY ))
+   if(out_bound_nschain_repository_entry_p->pkt_origin == VM_APPLN) 
    {
-     retval = tsc_send_all_flows_to_all_tsas(out_bound_nschain_repository_entry_p);
-     OF_LOG_MSG(OF_LOG_TSC,OF_LOG_ERROR,"Calling Proactive flow pushing to all switches routine.");
+     selector_type = out_bound_nschain_repository_entry_p->selector.selector_type;
+
+     if(out_bound_nschain_repository_entry_p->zone == ZONE_LESS)
+     {
+       retval = tsc_send_all_flows_to_all_tsas(out_bound_nschain_repository_entry_p);
+     }
+      else if (out_bound_nschain_repository_entry_p->zone == ZONE_LEFT)
+     {
+       if(selector_type == SELECTOR_PRIMARY) 
+         retval = tsc_send_all_flows_to_all_tsas_zone_left(out_bound_nschain_repository_entry_p);
+       else /* SELECTOR_SECONDARY */
+         retval = tsc_send_all_flows_to_all_tsas_zone_right(out_bound_nschain_repository_entry_p);   
+     }
+     else /* ZONE_RIGHT */
+     {
+       if(selector_type == SELECTOR_PRIMARY)
+         retval = tsc_send_all_flows_to_all_tsas_zone_right(out_bound_nschain_repository_entry_p);   
+       else
+         retval = tsc_send_all_flows_to_all_tsas_zone_left(out_bound_nschain_repository_entry_p);  
+     }
+
+     OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Calling Proactive flow pushing to all switches routine.");
 
      if(retval == OF_SUCCESS)
      { 
-       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_ERROR,"Proactive flow pushing is successful.");
+       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Proactive flow pushing is successful.");
      }
      else
      {
@@ -516,12 +550,12 @@ int32_t tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(uint64_t dp_handle,
      }    
    }
 #endif
- }
- else
-  {
-    /* Drop the packet. */
   }
-  return retval;
+ else
+ {
+   return OF_FAILURE;
+ }
+ return OF_SUCCESS;
 }
 /*******************************************************************************************************
 Function Name: tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd
@@ -535,10 +569,11 @@ Description:Miss Packet received from OF Table 2 of a logical switch whose handl
             Table_1 and Table_2 are used for service chaining purpose.
 *******************************************************************************************************/
 int32_t tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd(uint64_t dp_handle,
-                                                          struct ofl_packet_in* pkt_in,
-                                                          uint32_t in_port_id,
-                                                          uint64_t metadata
-                                                         )
+                                                         struct   ofl_packet_in* pkt_in,
+                                                         struct   of_msg* msg,
+                                                         uint32_t in_port_id,
+                                                         uint64_t metadata
+                                                        )
 {
   struct    nschain_repository_entry nschain_repository_entry;
   struct    nschain_repository_entry* in_bound_nschain_repository_entry_p;   
@@ -555,9 +590,8 @@ int32_t tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd(uint64_t dp_handle,
   struct    nsc_selector_node* selector_p;
   uint8_t   table_id,add_status = OF_FAILURE; 
 
-  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Miss Packet received by Table_2");
+  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Miss Packet received by Table_2");
 
-  table_2_barrier = (struct    table_barrier_msg*)calloc(1,sizeof(struct    table_barrier_msg));
   in_bound_nschain_repository_entry_p = &nschain_repository_entry;
 
   /* Get Local Switch Name */
@@ -636,9 +670,13 @@ int32_t tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd(uint64_t dp_handle,
     }
     else
     {
-      table_2_barrier->dp_handle = dp_handle;
-      table_2_barrier->in_port   = in_port_id;
-      table_2_barrier->pkt_in    = pkt_in;
+      table_2_barrier = (struct    table_barrier_msg*)calloc(1,sizeof(struct    table_barrier_msg));
+      table_2_barrier->dp_handle     = dp_handle;
+      table_2_barrier->in_port       = in_port_id;
+      table_2_barrier->msg           = msg;
+      table_2_barrier->packet        = pkt_in->packet;
+      table_2_barrier->packet_length = pkt_in->packet_length;
+
       retval = of_send_barrier_request_msg(dp_handle,
                                          tsc_barrier_reply_notification_fn,
                                          table_2_barrier,NULL);
@@ -646,7 +684,7 @@ int32_t tsc_inbound_ns_chain_table_2_miss_entry_pkt_rcvd(uint64_t dp_handle,
       if(retval != OF_SUCCESS)
       {
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"barrier request for table 2 failed");
-        retval = tsc_send_pktout_1_3_msg(dp_handle,in_port_id,pkt_in);
+        retval = tsc_send_pktout_1_3_msg(dp_handle,in_port_id,pkt_in->packet,pkt_in->packet_length);
         if(retval == OF_FAILURE)
         {
           OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to send Packet out message for Table 2");
@@ -766,6 +804,8 @@ int32_t  tsc_get_nschain_repository_entry (char*    switch_name_p,
 
   int32_t  retval = OF_SUCCESS; 
              
+  selector_p->nsc_entry_present = 0;
+
   retval = tsc_nvm_modules[nw_type].nvm_module_get_vnhandle_by_nid(nid,&vn_handle);
   if(retval != OF_SUCCESS)
   {
@@ -828,6 +868,7 @@ int32_t  tsc_get_nschain_repository_entry (char*    switch_name_p,
       continue;
     
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"nsc repository entry found");
+      selector_p->nsc_entry_present = 1;
       *nschain_repository_node_p_p = nsc_repository_scan_node_p; 
       CNTLR_RCU_READ_LOCK_RELEASE();
       return OF_SUCCESS;
@@ -886,6 +927,9 @@ int32_t  tsc_get_nschain_repository_entry (char*    switch_name_p,
   {
     nsc_repository_entry_p->service_chaining_type = vn_nsc_info_p->service_chaining_type;
   }
+
+  /* For 2 port S-VM vlan_id_pkt may be zero */
+#if 0  
   if((pkt_origin != VM_APPLN) && (nsc_repository_entry_p->vlan_id_pkt == 0))
   {
      /* TBD drop the packet */
@@ -893,8 +937,10 @@ int32_t  tsc_get_nschain_repository_entry (char*    switch_name_p,
      /* Assuming that such packets go from table 0 to Table 3 directly */
      retval = OF_FAILURE;
   }
+#endif
 
   /* Get match_vlan_id, next_vlan_id, out_next_service_port using NSRM API */
+  
   retval = nsc_get_l2_nschaining_info(nsc_repository_entry_p,pkt_in,pkt_origin);
   if(retval == OF_FAILURE)
   {
@@ -963,7 +1009,7 @@ int32_t tsc_add_t3_proactive_flow_for_vm(uint64_t crm_port_handle,uint64_t crm_v
 {
   struct   ucastpkt_outport_repository_entry* ucastpkt_outport_repository_entry_p = NULL;
   struct   crm_port* crm_port_p;
-  uint32_t nid,offset,index,magic,hashkey;
+  uint32_t nid,offset,index,magic,hashkey,hashmask;
   uint8_t  heap_b,nw_type;
   struct   mchash_table*  nsc_repository_table_p;
   void*    nsc_repository_mempool_g;
@@ -994,7 +1040,7 @@ int32_t tsc_add_t3_proactive_flow_for_vm(uint64_t crm_port_handle,uint64_t crm_v
       else if(nw_type == NVGRE_TYPE)
       {
         serviceport = (crm_port_p->nw_params).nvgre_nw.service_port;
-        nid         = (crm_port_p->nw_params).vxlan_nw.nid;
+        nid         = (crm_port_p->nw_params).nvgre_nw.nid;
       }
     }
     else
@@ -1059,6 +1105,13 @@ int32_t tsc_add_t3_proactive_flow_for_vm(uint64_t crm_port_handle,uint64_t crm_v
     offset = NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
     hashobj_p = (uchar8_t *)(ucastpkt_outport_repository_entry_p) + offset;
     
+    hashmask = nsc_no_of_repository_table_3_buckets_g;
+    hashkey  = nsc_compute_hash_repository_table_3(serviceport,
+                                                   ucastpkt_outport_repository_entry_p->dst_mac_high,
+                                                   ucastpkt_outport_repository_entry_p->dst_mac_low,
+                                                   dp_handle,
+                                                   hashmask);
+    
     MCHASH_APPEND_NODE(nsc_repository_table_p,hashkey,ucastpkt_outport_repository_entry_p,index,magic,hashobj_p,status_b);
     if(status_b == FALSE)
     {
@@ -1110,6 +1163,7 @@ Description:Miss Packet received from OF Table 3 of a logical switch whose handl
 *******************************************************************************************************/
 int32_t tsc_unicast_table_3_miss_entry_pkt_rcvd(uint64_t dp_handle,
                                                 struct   ofl_packet_in* pkt_in,
+                                                struct   of_msg* msg,
                                                 uint64_t metadata,
                                                 uint32_t in_port,
                                                 uint32_t tun_src_ip)
@@ -1123,9 +1177,8 @@ int32_t tsc_unicast_table_3_miss_entry_pkt_rcvd(uint64_t dp_handle,
   struct    table_barrier_msg*        table_3_barrier = NULL;   
   int32_t   retval = OF_SUCCESS;
 
-  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_ERROR,"Miss Packet received by Table_3");
+  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Miss Packet received by Table_3");
 
-  table_3_barrier = (struct    table_barrier_msg*)calloc(1,sizeof(struct    table_barrier_msg));
   nw_type = (uint8_t)(metadata >> NW_TYPE_OFFSET);
   nid = (uint32_t)(metadata & TUN_ID_MASK);
   serviceport  = (uint16_t)(metadata >> SERVICE_PORT_OFFSET);
@@ -1167,17 +1220,21 @@ int32_t tsc_unicast_table_3_miss_entry_pkt_rcvd(uint64_t dp_handle,
     }
     else
     {
-      table_3_barrier->dp_handle = dp_handle;
-      table_3_barrier->in_port   = in_port;
-      table_3_barrier->pkt_in    = pkt_in;
+      table_3_barrier = (struct    table_barrier_msg*)calloc(1,sizeof(struct    table_barrier_msg));
+      table_3_barrier->dp_handle     = dp_handle;
+      table_3_barrier->in_port       = in_port;
+      table_3_barrier->msg           = msg;
+      table_3_barrier->packet        = pkt_in->packet;
+      table_3_barrier->packet_length = pkt_in->packet_length;
+
       retval = of_send_barrier_request_msg(dp_handle,
-                                         tsc_barrier_reply_notification_fn,
-                                         table_3_barrier,NULL);
+                                           tsc_barrier_reply_notification_fn,
+                                           table_3_barrier,NULL);
 
       if(retval != OF_SUCCESS)
       {
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"barrier request for table 3 failed");
-        retval = tsc_send_pktout_1_3_msg(dp_handle,in_port,pkt_in);
+        retval = tsc_send_pktout_1_3_msg(dp_handle,in_port,pkt_in->packet,pkt_in->packet_length);
         if(retval == OF_FAILURE)
         {
            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Failed to send Packet out message for Table 2");
@@ -1514,6 +1571,7 @@ Description:Miss Packet received from OF Table 3 of a logical switch whose handl
 *******************************************************************************************************/
 int32_t tsc_broadcast_outbound_table_4_miss_entry_pkt_rcvd(uint64_t dp_handle,
                                                            struct   ofl_packet_in* pkt_in,
+                                                           struct   of_msg* msg,                 
                                                            uint64_t metadata,
                                                            uint32_t in_port
                                                           )
@@ -1599,7 +1657,7 @@ int32_t tsc_broadcast_outbound_table_4_miss_entry_pkt_rcvd(uint64_t dp_handle,
   }
   else
   {
-    retval = tsc_send_pktout_1_3_msg(dp_handle,in_port,pkt_in);
+    retval = tsc_send_pktout_1_3_msg(dp_handle,in_port,pkt_in->packet,pkt_in->packet_length);
     if(retval == OF_FAILURE)
     {
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Failed to send Packet out message for Table 4");
@@ -1640,10 +1698,13 @@ int32_t tsc_delete_nsc_tables_1_2_flows_for_service_vm_deleted(uint64_t vn_handl
     return OF_FAILURE;
   }
 
+  CNTLR_RCU_READ_LOCK_TAKE();
+
   retval =  crm_get_port_byhandle(crm_port_handle,&crm_port_p);
   if(retval != CRM_SUCCESS)
   {
     printf("NSMDEL 02A ");
+    CNTLR_RCU_READ_LOCK_RELEASE();
     return retval;
   }
   
@@ -1655,8 +1716,6 @@ int32_t tsc_delete_nsc_tables_1_2_flows_for_service_vm_deleted(uint64_t vn_handl
   nsc_repository_table_p  = vn_nsc_info_p->nsc_repository_table_1_p;
   hashkey = 0;
   skip_this_entry = 1;
-
-  CNTLR_RCU_READ_LOCK_TAKE();
 
   MCHASH_TABLE_SCAN(nsc_repository_table_p,hashkey)
   {
@@ -1714,7 +1773,6 @@ int32_t tsc_delete_nsc_tables_1_2_flows_for_service_vm_deleted(uint64_t vn_handl
     }
    }
    CNTLR_RCU_READ_LOCK_RELEASE();
-   printf("NSMDEL 11 ");
    return OF_SUCCESS;
 }
 /*************************************************************************************************************
@@ -1875,11 +1933,19 @@ int32_t tsc_flow_entry_removal_msg_recvd_table_3(uint64_t dp_handle,uint64_t met
 
   MCHASH_ACCESS_NODE(nsc_repository_table_p,index,magic,ucastpkt_outport_repository_entry_p,status_b);
 
+  if(status_b != TRUE)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"No repository entry found matching with the flow removal message received for table 3");
+    CNTLR_RCU_READ_LOCK_RELEASE();
+    printf("\r\n table 3 - for flow removal  ucastpkt_outport_repository_entry is not found");
+    return OF_FAILURE;
+  }
+
  // if((reason == OFPRR_IDLE_TIMEOUT) || (reason == OFPRR_HARD_TIMEOUT ))
     {
       /* Delete the repository entry matching the flow removed in switch by time outs */
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Deleting the ucastpkt_outport repository entry found");
-      
+      status_b = FALSE; 
       MCHASH_DELETE_NODE_BY_REF(nsc_repository_table_p, ucastpkt_outport_repository_entry_p->index,ucastpkt_outport_repository_entry_p->magic,
                                 struct ucastpkt_outport_repository_entry *,offset,status_b);
       if(status_b == TRUE)
@@ -2086,7 +2152,8 @@ int32_t tsc_delete_table_4_flow_entries(uint8_t crm_port_type,uint64_t crm_port_
 
   tsc_nvm_modules[nw_type].nvm_module_construct_metadata(tsc_params_vm_p,0,crm_port_p);
 
-  if((crm_port_type == VM_PORT) || (crm_port_type == VMNS_PORT))
+  if((crm_port_type == VM_PORT)      || (crm_port_type == VMNS_PORT) ||
+     (crm_port_type == VMNS_IN_PORT) || (crm_port_type == VMNS_OUT_PORT))
   {
     tsc_params_vm_p->metadata      &= 0xF000FFFFFFFFFFFF;
     tsc_params_vm_p->metadata_mask  = 0xF000FFFFFFFFFFFF;
@@ -2153,7 +2220,8 @@ int32_t tsc_delete_table_5_flow_entries(uint8_t crm_port_type,uint64_t crm_port_
 
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, " PKT-IN METADATA1 =%llx",tsc_params_vm_p->metadata);
 
-  if((crm_port_type == VM_PORT) || (crm_port_type == VMNS_PORT))
+  if((crm_port_type == VM_PORT)      || (crm_port_type == VMNS_PORT) ||
+     (crm_port_type == VMNS_IN_PORT) || (crm_port_type == VMNS_OUT_PORT))
   {
     tsc_params_vm_p->metadata      &= 0xF000FFFFFFFFFFFF;
     tsc_params_vm_p->metadata_mask  = 0xF000FFFFFFFFFFFF;
@@ -2178,6 +2246,7 @@ Description:Miss Packet received from OF Table 5 of a logical switch whose handl
 *******************************************************************************************************/
 int32_t tsc_broadcast_inbound_table_5_miss_entry_pkt_rcvd(uint64_t  dp_handle,
                                                           struct    ofl_packet_in* pkt_in,
+                                                          struct    of_msg* msg,                                             
                                                           uint64_t  metadata,
                                                           uint32_t  in_port,
                                                           uint32_t  tun_src_ip
@@ -2292,7 +2361,7 @@ int32_t tsc_broadcast_inbound_table_5_miss_entry_pkt_rcvd(uint64_t  dp_handle,
   }
   else
   {
-    retval = tsc_send_pktout_1_3_msg(dp_handle,in_port,pkt_in);
+    retval = tsc_send_pktout_1_3_msg(dp_handle,in_port,pkt_in->packet,pkt_in->packet_length);
     if(retval == OF_FAILURE)
     {
       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_ERROR,"Failed to send Packet out message for Table 5");
@@ -2485,24 +2554,42 @@ int32_t tsc_register_nvm_module(struct tsc_nvm_module_info*       nvm_module_inf
 }
 /*********************************************************************************************************************************************/
 void tsc_barrier_reply_notification_fn(uint64_t  controller_handle,
-                                                 uint64_t  domain_handle,
-                                                 uint64_t  datapath_handle,
-                                                 struct    of_msg *msg,
-                                                 void     *cbk_arg1,
-                                                 void     *cbk_arg2,
-                                                 uint8_t   status)
+                                       uint64_t  domain_handle,
+                                       uint64_t  datapath_handle,
+                                       struct    of_msg *msg,
+                                       void     *cbk_arg1,
+                                       void     *cbk_arg2,
+                                       uint8_t   status)
 {
    int32_t retval = OF_FAILURE;
    struct table_barrier_msg* table_barrier;
+
    table_barrier = (struct table_barrier_msg*) cbk_arg1;
    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"dp_handle : %llx",table_barrier->dp_handle);
-   retval = tsc_send_pktout_1_3_msg(table_barrier->dp_handle,table_barrier->in_port,table_barrier->pkt_in); 
-   if(retval == OF_FAILURE)
-   { 
-      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Failed to send Packet out message for Table 1");
-      return;
+  
+   if(status == OF_RESPONSE_STATUS_SUCCESS)
+   {
+     retval = tsc_send_pktout_1_3_msg(table_barrier->dp_handle,table_barrier->in_port,
+                                      table_barrier->packet,table_barrier->packet_length); 
+     if(retval != OF_FAILURE)
+     {   
+       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Sent pkt out through callback in barrier wait");
+     }                    
+     else 
+     {     
+       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR," Failed to send Packet out message through callback in barrier wait");
+       printf("\r\n TSC Barrier callback:Failed to send Packet out message through callback in barrier wait");
+       return;
+     }  
    }
-   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Sent pkt out through callback in barrier wait");
- 
-}
+   else
+   {
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"status is not OF_RESPONSE_STATUS_SUCCESS- Packet out not sent");
+     printf("\r\n TSC Barrier callback:status is not OF_RESPONSE_STATUS_SUCCESS- Packet out not sent");
+   }
 
+   if(table_barrier->msg != NULL)
+     (table_barrier->msg)->desc.free_cbk(table_barrier->msg);
+   free(table_barrier);
+}
+/********************************************************************************************************************************************/ 

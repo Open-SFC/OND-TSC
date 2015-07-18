@@ -109,6 +109,7 @@ struct nsc_selector_node
   uint32_t  src_ip;
   uint32_t  dst_ip;
 
+  uint32_t  zone;
   uint8_t   selector_type; /* PRIMARY or SECONDARY */
   uint32_t  hashkey;
 
@@ -121,7 +122,8 @@ struct nsc_selector_node
   struct nsc_selector_node* other_selector_p;
   /* cnbind_node */
   struct l2_connection_to_nsinfo_bind_node* cnbind_node_p;
-  uint16_t vlan_id_pkt;  
+  uint16_t vlan_id_pkt; 
+  uint8_t  nsc_entry_present; 
 };
 
 struct nw_services_to_apply

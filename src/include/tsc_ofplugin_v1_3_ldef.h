@@ -53,4 +53,6 @@
 
 int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle);
 
+int32_t tsc_ofplugin_v1_3_uninit(uint64_t domain_handle);
+
 

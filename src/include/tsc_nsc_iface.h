@@ -23,9 +23,16 @@
 #define TSC_PKT_OUTBOUND 1
 #define TSC_PKT_INBOUND  2
 
+enum sel_type_swap_e
+{
+  SEL_PRIMARY,
+  SEL_SECONDARY,
+  SEL_SECONDARY_NOSWAP,
+};
+
 struct tsa_all_flows_members
 {
-  uint8_t   selector_type;
+  uint32_t  sel_type_swap_e;
   uint8_t   table_no;
   uint8_t   pkt_origin;
   uint64_t  dp_handle;

@@ -12,12 +12,12 @@ Installation/Build Procedure:
 3. Build TSC application. Execute the following commands.
   
    Note : TSC app assumes ONdirector binaries and header files are installed in
-   "/usr/local/ond-of-driver/1.0". if not, this definition has to be set "OND_OF_DRVR_INST_DIR" 
-   accordingly.
+   "/usr/local/ondir_platform/2.0". The "ondir_platform_inst_dir" in rules.mk has to be set
+   to "/usr/local/ondir_platform/2.0" accordingly.
 
    source x86-64bit-env.sh
    make 
-   mak install  #This will install the TSC app shared object files in "/usr/local/ond-of-driver/1.0/lib/ofapps"
+   mak install  #This will install the TSC app shared object files in "/usr/local/ondir_platform/2.0/lib/ofapps"
    
 4. Testing and validation.
 

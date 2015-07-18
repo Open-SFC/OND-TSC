@@ -35,7 +35,8 @@ int32_t tsc_ofplugin_v1_3_send_flow_mod_classify_table_nwports(uint64_t dp_handl
 
 int32_t tsc_ofplugin_v1_3_del_flows_from_table_3(uint64_t dp_handle,uint8_t *port_macaddr);
 
-int32_t tsc_send_pktout_1_3_msg(uint64_t datapath_handle,uint32_t in_port,struct ofl_packet_in *pkt_in);
+int32_t tsc_send_pktout_1_3_msg(uint64_t datapath_handle,uint32_t in_port,
+                                uint8_t* packet,uint16_t packet_length);
 
 int32_t tsc_prepare_flwmod_1_3_msg_table_0(uint64_t dp_handle,
                                            uint16_t msg_len,
