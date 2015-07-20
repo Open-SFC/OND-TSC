@@ -61,6 +61,7 @@ INCLUDE += -I $(ondir_platform_inst_dir)/include\
           -I $(ondir_platform_inst_dir)/include/ucmcbk/crm/include\
           -I $(ondir_platform_inst_dir)/include/third_party_opensrc/futex\
           -I $(ondir_platform_inst_dir)/include/third_party_opensrc/openssl-1.0.0/include/openssl\
+          -I $(ondir_platform_inst_dir)/include/third_party_opensrc/urcu\
           -I $(tscapp_dir)/src/include
 
 CFLAGS += $(INCLUDE) -Wall -D_GNU_SOURCE -g -O
