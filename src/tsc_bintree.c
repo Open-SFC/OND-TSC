@@ -24,14 +24,15 @@
 
 struct tsc_bintree_node* tsc_bintree_root;
 
-struct tsc_bintree_node* tsc_bintree_insert(struct tsc_bintree_node *node,unsigned data,unsigned int zone)
+struct tsc_bintree_node* tsc_bintree_insert(struct tsc_bintree_node *node,unsigned int data,char* zone)
 {
   if(node==NULL)
   {
     struct tsc_bintree_node *temp;
     temp = (struct tsc_bintree_node *)malloc(sizeof(struct tsc_bintree_node));
     temp->data = data;
-    temp->zone = zone;
+    srtncpy(temp->zone,zone,CRM_MAX_ZONE_SIZE);
+    temp->zone_direction = 0;
     temp->left = temp->right = NULL;
     return temp;
   }
@@ -71,6 +72,6 @@ void tsc_bintree_list(struct tsc_bintree_node* tree)
 {
   if(tree->left) tsc_bintree_list(tree->left);
   printf("\r\n ip_addr = %x",tree->data);
-  printf(" zone = %d",tree->zone);
+  printf(" zone = %s",tree->zone);
   if(tree->right) tsc_bintree_list(tree->right);
 }

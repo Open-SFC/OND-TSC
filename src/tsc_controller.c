@@ -518,24 +518,35 @@ int32_t tsc_outbound_ns_chain_table_1_miss_entry_pkt_rcvd(uint64_t dp_handle,
    if(out_bound_nschain_repository_entry_p->pkt_origin == VM_APPLN) 
    {
      selector_type = out_bound_nschain_repository_entry_p->selector.selector_type;
+     
+     printf("\r\n selector type = %d",selector_type);
+     printf(" zone = %d", out_bound_nschain_repository_entry_p->zone);
 
      if(out_bound_nschain_repository_entry_p->zone == ZONE_LESS)
      {
        retval = tsc_send_all_flows_to_all_tsas(out_bound_nschain_repository_entry_p);
      }
-      else if (out_bound_nschain_repository_entry_p->zone == ZONE_LEFT)
+     else if (out_bound_nschain_repository_entry_p->zone == ZONE_LEFT)
      {
        if(selector_type == SELECTOR_PRIMARY) 
+       {
          retval = tsc_send_all_flows_to_all_tsas_zone_left(out_bound_nschain_repository_entry_p);
+       }  
        else /* SELECTOR_SECONDARY */
+       {
          retval = tsc_send_all_flows_to_all_tsas_zone_right(out_bound_nschain_repository_entry_p);   
+       }  
      }
      else /* ZONE_RIGHT */
      {
        if(selector_type == SELECTOR_PRIMARY)
+       {
          retval = tsc_send_all_flows_to_all_tsas_zone_right(out_bound_nschain_repository_entry_p);   
+       }  
        else
-         retval = tsc_send_all_flows_to_all_tsas_zone_left(out_bound_nschain_repository_entry_p);  
+       {
+         retval = tsc_send_all_flows_to_all_tsas_zone_left(out_bound_nschain_repository_entry_p); 
+       }  
      }
 
      OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Calling Proactive flow pushing to all switches routine.");
@@ -737,7 +748,12 @@ int32_t tsc_delete_nschain_repository_entry(struct nschain_repository_entry* nsc
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    return OF_FAILURE;
+  }    
   if(table_id == TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1)
     nsc_repository_table_p   = vn_nsc_info_p->nsc_repository_table_1_p;
   else
@@ -758,13 +774,13 @@ int32_t tsc_delete_nschain_repository_entry(struct nschain_repository_entry* nsc
   if(status_b == TRUE)
   {
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "Repository entry deleted successfully from table repository %d",table_id);
-    CNTLR_RCU_READ_LOCK_RELEASE(); 
+    //CNTLR_RCU_READ_LOCK_RELEASE(); 
     retval = OF_SUCCESS;
   }
   else
   {
     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR, "Repository entry deletion failed from table repository %d",table_id);
-    CNTLR_RCU_READ_LOCK_RELEASE();
+    //CNTLR_RCU_READ_LOCK_RELEASE();
     retval = OF_FAILURE;
   }
   CNTLR_RCU_READ_LOCK_RELEASE();
@@ -821,7 +837,12 @@ int32_t  tsc_get_nschain_repository_entry (char*    switch_name_p,
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-  
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    return OF_FAILURE;
+  }
   offset = NSC_NSCHAIN_REPOSITORY_NODE_OFFSET;
 
   CNTLR_RCU_READ_LOCK_TAKE();
@@ -1059,7 +1080,13 @@ int32_t tsc_add_t3_proactive_flow_for_vm(uint64_t crm_port_handle,uint64_t crm_v
     }
 
     vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+    vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+    if(vn_nsc_info_p == NULL)
+    {
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+      status = OF_FAILURE;
+      break;
+    }
     offset = NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
 
     nsc_repository_table_p   = vn_nsc_info_p->nsc_repository_table_3_p;
@@ -1183,6 +1210,7 @@ int32_t tsc_unicast_table_3_miss_entry_pkt_rcvd(uint64_t dp_handle,
   nid = (uint32_t)(metadata & TUN_ID_MASK);
   serviceport  = (uint16_t)(metadata >> SERVICE_PORT_OFFSET);
 
+  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"nw_type = %x",nw_type);
   OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"nid = %x",nid);
   
   do
@@ -1307,6 +1335,12 @@ int32_t  tsc_get_ucastpkt_outport_repository_entry(uint64_t dp_handle,
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    return OF_FAILURE;
+  }
 
   offset = NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
 
@@ -1498,7 +1532,10 @@ int32_t  tsc_get_ucastpkt_outport_repository_entry(uint64_t dp_handle,
          - Output packet on appropriate NW port to reach the remote destination crm port. */
        
       /* Get unicast port nw_out_port_no */
-         
+      
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"local_switch_name = %s",local_switch_name_p);
+      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"serviceport = %d",serviceport);
+
       retval = tsc_nvm_modules[nw_type].nvm_module_get_unicast_nwport(local_switch_name_p,
                                                                       serviceport,
                                                                       &(ucastpkt_outport_repository_entry_p->out_port_no)
@@ -1712,7 +1749,13 @@ int32_t tsc_delete_nsc_tables_1_2_flows_for_service_vm_deleted(uint64_t vn_handl
   vlan_id_out = crm_port_p->vlan_id_out;
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    CNTLR_RCU_READ_LOCK_RELEASE();
+    return OF_FAILURE;
+  }
   nsc_repository_table_p  = vn_nsc_info_p->nsc_repository_table_1_p;
   hashkey = 0;
   skip_this_entry = 1;
@@ -1812,7 +1855,12 @@ int32_t tsc_flow_entry_removal_msg_recvd_nschain_tables(uint64_t dp_handle,uint6
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    return OF_FAILURE;
+  }
   offset =  NSC_NSCHAIN_REPOSITORY_NODE_OFFSET;
 
   if(table_id == TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1)
@@ -1924,8 +1972,14 @@ int32_t tsc_flow_entry_removal_msg_recvd_table_3(uint64_t dp_handle,uint64_t met
   CNTLR_RCU_READ_LOCK_TAKE();
   
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    CNTLR_RCU_READ_LOCK_RELEASE();
+    return OF_FAILURE;
+  }
   offset        =  NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
-
   nsc_repository_table_p   = vn_nsc_info_p->nsc_repository_table_3_p;
 
   magic = (uint32_t)(cookie >>32);
@@ -2043,6 +2097,13 @@ int32_t tsc_delete_table_3_flow_entries(uint8_t crm_port_type,uint64_t crm_port_
    CNTLR_RCU_READ_LOCK_TAKE();
  
    vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  
+   vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+   if(vn_nsc_info_p == NULL)
+   {
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+     CNTLR_RCU_READ_LOCK_RELEASE(); 
+     return OF_FAILURE;
+   }
    offset = NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
 
    nsc_repository_table_p   = vn_nsc_info_p->nsc_repository_table_3_p;

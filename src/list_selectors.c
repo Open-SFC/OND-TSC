@@ -124,7 +124,7 @@ int32_t tsc_get_first_matching_cnbind_entry(struct nsc_selector_node_key   *sele
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"vn name found : %s",vn_entry_p->nw_name);
 
    vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  
-   
+   vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
    l2_connection_to_nsinfo_bind_table_p = vn_nsc_info_p->l2_connection_to_nsinfo_bind_table_p; 
 
    mempool_info.mempool_type = MEMPOOL_TYPE_HEAP;
@@ -312,7 +312,7 @@ int32_t tsc_get_next_matching_cnbind_entry(struct nsc_selector_node_key   *selec
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"vn name found : %s",vn_entry_p->nw_name);
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
   l2_connection_to_nsinfo_bind_table_p = vn_nsc_info_p->l2_connection_to_nsinfo_bind_table_p;
 
   offset = NSC_SELECTOR_NODE_OFFSET;
@@ -504,7 +504,7 @@ int32_t tsc_get_exact_matching_cnbind_entry(struct nsc_selector_node_key   *sele
    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"vn name found : %s",vn_entry_p->nw_name);
 
    vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
-
+   vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
    l2_connection_to_nsinfo_bind_table_p = vn_nsc_info_p->l2_connection_to_nsinfo_bind_table_p;
 
    

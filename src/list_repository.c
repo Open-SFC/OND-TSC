@@ -83,6 +83,7 @@ int32_t nsc_get_first_repository_entry(struct nsc_repository_key *key ,uint64_t 
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
+  vn_nsc_info_p->vn_nsc_info_p->vn_nsc_info_p;
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"table id in key :%d",key->table_id); 
   if(key->table_id == 1) 
   {
@@ -194,7 +195,7 @@ int32_t nsc_get_next_repository_entry(struct nsc_repository_key *key ,uint64_t r
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
-  
+  vn_nsc_info_p->vn_nsc_info_p->vn_nsc_info_p; 
   if(key->table_id == 1)
   {
     nsc_repository_table_g = vn_nsc_info_p->nsc_repository_table_1_p;
@@ -338,7 +339,7 @@ int32_t nsc_get_first_table_3_repository_entry(struct   nsc_repository_key *key 
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
-
+  vn_nsc_info_p->vn_nsc_info_p->vn_nsc_info_p;
   nsc_table_3_repository_table_g = vn_nsc_info_p->nsc_repository_table_3_p;
   if(nsc_table_3_repository_table_g == NULL)
   {
@@ -409,7 +410,7 @@ int32_t nsc_get_next_table_3_repository_entry(struct nsc_repository_key *key ,ui
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
-
+  vn_nsc_info_p->vn_nsc_info_p->vn_nsc_info_p;
   nsc_table_3_repository_table_g = vn_nsc_info_p->nsc_repository_table_3_p;
 
   if(nsc_table_3_repository_table_g == NULL)

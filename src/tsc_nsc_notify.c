@@ -39,25 +39,62 @@ void nsc_l2_service_map_notifications_add_cbk(uint8_t   notification_type,
                                               void      *callback_arg1,
                                               void      *callback_arg2)
 {
-  struct   vn_service_chaining_info* vn_nsc_info_p;
+  struct   vn_service_chaining_info* vn_nsc_info_in_p;
+  struct   vn_service_chaining_info* vn_nsc_info_out_p;
   struct   crm_virtual_network*      vn_entry_p;
   int32_t  retval;
 
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"received notification callback - L2 service map record is added");
 
-  retval = crm_get_vn_byhandle(notification_data.add_del.vn_handle,&vn_entry_p); 
-  if(retval != CRM_SUCCESS)
-  {
-    OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "VN doesn't exist ");
-    return;
+  if(notification_data.add_del.vn_in_handle == notification_data.add_del.vn_out_handle)
+  {    
+    retval = crm_get_vn_byhandle(notification_data.add_del.vn_in_handle,&vn_entry_p); 
+    if(retval != CRM_SUCCESS)
+    {
+      OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "VN doesn't exist ");
+      return;
+    }
+ 
+    vn_nsc_info_in_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
+
+    vn_nsc_info_in_p->service_chaining_type  = SERVICE_CHAINING_L2;
+    vn_nsc_info_in_p->vn_nsrmdb_lookup_state = 0;
+    vn_nsc_info_in_p->srf_service_map_record = notification_data.add_del.l2nw_service_map_handle;  
+    vn_nsc_info_in_p->srf_nschainset_object  = notification_data.add_del.nschainset_object_handle;
+    vn_nsc_info_in_p->nw_direction           = NW_DIRECTION_IN; 
+    vn_nsc_info_in_p->no_of_networks         = 1; 
+    vn_nsc_info_in_p->vn_nsc_info_p          = vn_nsc_info_in_p;  
   }
+  else
+  {
+    retval = crm_get_vn_byhandle(notification_data.add_del.vn_in_handle,&vn_entry_p);
+    if(retval != CRM_SUCCESS)
+    {
+        OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "VN doesn't exist ");
+        return;
+    }
+    vn_nsc_info_in_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
 
-  vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
+    vn_nsc_info_in_p->service_chaining_type  = SERVICE_CHAINING_L2;
+    vn_nsc_info_in_p->vn_nsrmdb_lookup_state = 0;
+    vn_nsc_info_in_p->srf_service_map_record = notification_data.add_del.l2nw_service_map_handle;
+    vn_nsc_info_in_p->srf_nschainset_object  = notification_data.add_del.nschainset_object_handle;
+    vn_nsc_info_in_p->nw_direction           = NW_DIRECTION_IN; 
+    vn_nsc_info_in_p->no_of_networks         = 2; 
+    vn_nsc_info_in_p->vn_nsc_info_p          = vn_nsc_info_in_p;  
 
-  vn_nsc_info_p->service_chaining_type  = SERVICE_CHAINING_L2;
-  vn_nsc_info_p->vn_nsrmdb_lookup_state = 0;
-  vn_nsc_info_p->srf_service_map_record = notification_data.add_del.l2nw_service_map_handle;  
-  vn_nsc_info_p->srf_nschainset_object  = notification_data.add_del.nschainset_object_handle;  
+    retval = crm_get_vn_byhandle(notification_data.add_del.vn_out_handle,&vn_entry_p);
+    if(retval != CRM_SUCCESS)
+    {
+        OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "VN doesn't exist ");
+        return;
+    }
+ 
+    vn_nsc_info_out_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
+    vn_nsc_info_out_p->no_of_networks         = 2; 
+    vn_nsc_info_out_p->nw_direction           = NW_DIRECTION_OUT; 
+    vn_nsc_info_out_p->vn_nsc_info_p          = vn_nsc_info_in_p;  
+  }
 }
 
 void nsc_l2_service_map_notifications_del_cbk(uint8_t   notification_type,
@@ -72,7 +109,7 @@ void nsc_l2_service_map_notifications_del_cbk(uint8_t   notification_type,
  
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"received notification callback - L2 service map record is deleted");
 
-  retval = crm_get_vn_byhandle(notification_data.add_del.vn_handle,&vn_entry_p);
+  retval = crm_get_vn_byhandle(notification_data.add_del.vn_in_handle,&vn_entry_p);
   if(retval != CRM_SUCCESS)
   {
     OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "VN doesn't exist ");
@@ -81,10 +118,27 @@ void nsc_l2_service_map_notifications_del_cbk(uint8_t   notification_type,
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
 
+  vn_nsc_info_p->vn_nsc_info_p          = NULL;
   vn_nsc_info_p->service_chaining_type  = 0;
   vn_nsc_info_p->vn_nsrmdb_lookup_state = 0;
   vn_nsc_info_p->srf_service_map_record = 0;
   vn_nsc_info_p->srf_nschainset_object  = 0;
+
+  retval = crm_get_vn_byhandle(notification_data.add_del.vn_out_handle,&vn_entry_p);
+  if(retval != CRM_SUCCESS)
+  {
+    OF_LOG_MSG(OF_LOG_NSRM, OF_LOG_DEBUG, "VN doesn't exist ");
+    return;
+  }
+
+  vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));
+
+  vn_nsc_info_p->vn_nsc_info_p          = NULL;
+  vn_nsc_info_p->service_chaining_type  = 0;
+  vn_nsc_info_p->vn_nsrmdb_lookup_state = 0;
+  vn_nsc_info_p->srf_service_map_record = 0;
+  vn_nsc_info_p->srf_nschainset_object  = 0;
+
 }
 
 /*GPSYS this function is modified with 2 ports support*/
@@ -96,14 +150,6 @@ void nsc_l2_nwservice_object_launched_cbk(uint8_t   notification_type,
 {
   struct  crm_port* port_info_p = NULL;
   int32_t retval = OF_SUCCESS;
-
-  //printf("\r\n nsc_l2_nwservice_object_launched_cbk is called");
-  
-#if 0
-  /****TBD NSM testing 2 port S-VM using 1 port S-VM */
-  notification_data.launch.no_of_ports = 1;
-  /***************************************************/
-#endif
 
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "nsc_l2_nwservice_object_launched_cbk is called");
   
@@ -286,6 +332,16 @@ void  nsrm_bypass_rule_notifications_cbk(uint8_t   notification_type,
   OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"nsrmdb_current_state_g = %d",nsrmdb_current_state_g);
 }
 
+void  nsrm_register_zone_change_notification_cbk(uint8_t   notification_type,
+                                         uint64_t  saferef,
+                                         union     nsrm_zone_notification_data notification_data,
+                                         void      *callback_arg1,
+                                         void      *callback_arg2)
+{
+  OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"nsrm_register_zone_change_notification_cbk called");
+  printf("\r\n nsrm_register_zone_change_notification_cbk: Received notification for a zone is deleted or modified");
+  tsc_reset_zone_direction_upon_modification(notification_data.add_del.zone_name_p);
+}    
 #if 0
 
    TBD
@@ -385,6 +441,32 @@ int32_t nsc_register_nsrm_notifications(void)
 
     if(retval != NSRM_SUCCESS)
       break;
+
+#if 0
+    retval = nsrm_register_zone_notifications(NSRM_ZONE_MODIFIED_IN_NSCHAINSET_OBJECT,
+                                              nsrm_register_zone_change_notification_cbk, 
+                                              (void *)&callback_arg1,
+                                              (void *)&callback_arg2);
+
+    if(retval != NSRM_SUCCESS)
+      break; 
+
+    retval = nsrm_register_zone_notifications(NSRM_ZONE_DELETED_FROM_NSCHAINSET_OBJECT ,
+                                              nsrm_register_zone_change_notification_cbk,
+                                              (void *)&callback_arg1,
+                                              (void *)&callback_arg2);
+
+    if(retval != NSRM_SUCCESS)
+      break;
+#endif
+    retval = nsrm_register_zone_notifications(NSRM_ZONE_ALL,
+                                              nsrm_register_zone_change_notification_cbk, 
+                                              (void *)&callback_arg1,
+                                              (void *)&callback_arg2);
+
+    if(retval != NSRM_SUCCESS)
+      break; 
+
 
   }while(0);
   return retval;

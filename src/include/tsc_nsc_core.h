@@ -109,7 +109,8 @@ struct nsc_selector_node
   uint32_t  src_ip;
   uint32_t  dst_ip;
 
-  uint32_t  zone;
+  char      zone[CRM_MAX_ZONE_SIZE + 1];
+  uint32_t  zone_direction;
   uint8_t   selector_type; /* PRIMARY or SECONDARY */
   uint32_t  hashkey;
 
@@ -211,6 +212,10 @@ struct vn_service_chaining_info
   struct   mchash_table* nsc_repository_table_1_p;
   struct   mchash_table* nsc_repository_table_2_p;
   struct   mchash_table* nsc_repository_table_3_p;
+
+  uint8_t  nw_direction;
+  uint8_t  no_of_networks;
+  struct   vn_service_chaining_info*  vn_nsc_info_p;
 };
 /***********************************************************************************************************************************************
 Function: nsc_lookup_l2_nschaining_info

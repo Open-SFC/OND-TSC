@@ -46,7 +46,8 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
 
 int32_t tsc_nsc_send_proactive_flow_table_3_zone_left(struct    nschain_repository_entry* nschain_repository_entry_first_p,
                                                       struct    nwservice_instance *nw_service_p,
-                                                      uint8_t   use_dstmac);
+                                                      uint8_t   use_dstmac,
+                                                      uint32_t  nid);
 /*****************************************************************************************************************************************/
 /* Zone specific.Primary->ZONE_LEFT,Secondary->ZONE_RIGHT. May contain both 1-port and 2-port S-VMs. */
 int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry* nschain_repository_entry_p)
@@ -55,7 +56,7 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
   uint8_t  use_dstmac;
   uint16_t serviceport;
   uint32_t no_of_nwbr_ports;
-  uint32_t retval = OF_SUCCESS;
+  uint32_t nid,retval = OF_SUCCESS;
 
   struct   nw_services_to_apply  *nw_services_p;
   struct   nw_services_to_apply  *first_service_sel_1_p,*first_service_sel_2_p;
@@ -86,6 +87,7 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
   cn_bind_entry_p = nschain_repository_entry_p->selector.cnbind_node_p;
 
   nw_type      = nschain_repository_entry_p->nw_type;
+  nid          = nschain_repository_entry_p->nid;         /* introduced for table_3 */   
   serviceport  = nschain_repository_entry_p->serviceport;
 
   if(cn_bind_entry_p == NULL) 
@@ -165,6 +167,7 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
       tsc_all_flows_p->dp_handle       = first_nwservice_sel_2_instance_p->system_br_saferef;
       tsc_all_flows_p->nw_port_b       = FALSE;
 
+      /* out network is not used for this flow */
       if(first_nwservice_sel_2_instance_p->no_of_ports == 1)
       {
         tsc_all_flows_p->out_port_no   = first_nwservice_sel_2_instance_p->port1_id;
@@ -178,6 +181,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
         tsc_all_flows_p->match_vlan_id = first_nwservice_sel_2_instance_p->vlan_id_out;
         tsc_all_flows_p->next_vlan_id  = 0;
         tsc_all_flows_p->vlan_id_pkt   = 0;
+
+        nschain_repository_entry_p->nw_type = first_nwservice_sel_2_instance_p->outport_nw_type;
+        nschain_repository_entry_p->nid     = first_nwservice_sel_2_instance_p->outport_nw_id;
       }
       /* F9 Flow */
       retval = tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
@@ -238,7 +244,8 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
       tsc_all_flows_p->pkt_origin      = NW_BROADCAST_SIDE;  
       tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef;
       tsc_all_flows_p->nw_port_b       = FALSE;
-
+      
+      /* out network is not used for this flow */ 
       if(first_nwservice_sel_1_instance_p->no_of_ports == 1)
       {    
         tsc_all_flows_p->out_port_no   = first_nwservice_sel_1_instance_p->port1_id; 
@@ -252,6 +259,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
         tsc_all_flows_p->match_vlan_id = first_nwservice_sel_1_instance_p->vlan_id_in; 
         tsc_all_flows_p->next_vlan_id  = 0;
         tsc_all_flows_p->vlan_id_pkt   = 0;
+
+        nschain_repository_entry_p->nw_type = first_nwservice_sel_1_instance_p->inport_nw_type;
+        nschain_repository_entry_p->nid     = first_nwservice_sel_1_instance_p->inport_nw_id;
       }
       /* F9 Flow */   
       retval = tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
@@ -325,6 +335,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = first_nwservice_sel_1_instance_p->vlan_id_out;
           tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_1_instance_p->vlan_id_in;
           tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_1_instance_p->vlan_id_out;
+          
+          nschain_repository_entry_p->out_nw_type = next_nwservice_sel_1_instance_p->inport_nw_type;
+          nschain_repository_entry_p->out_nid     = next_nwservice_sel_1_instance_p->inport_nw_id;
         }    
         else /* 2-port */
         {
@@ -333,6 +346,12 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = 0; /* Don't add match field */
           tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_1_instance_p->vlan_id_in;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+
+          nschain_repository_entry_p->nw_type = first_nwservice_sel_1_instance_p->outport_nw_type;
+          nschain_repository_entry_p->nid     = first_nwservice_sel_1_instance_p->outport_nw_id;
+       
+          nschain_repository_entry_p->out_nw_type = next_nwservice_sel_1_instance_p->inport_nw_type;
+          nschain_repository_entry_p->out_nid     = next_nwservice_sel_1_instance_p->inport_nw_id;
         }
         retval = tsc_nvm_modules[nw_type].nvm_module_get_unicast_nwport(first_nwservice_sel_1_instance_p->switch_name,
                                                                         serviceport,
@@ -389,13 +408,13 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           printf("\r\n PPH-09");
           return OF_FAILURE;
         }
-       
         tsc_all_flows_p->sel_type_swap_e = SEL_PRIMARY;
         tsc_all_flows_p->table_no        = TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2;
         tsc_all_flows_p->pkt_origin      = NW_BROADCAST_SIDE; 
         tsc_all_flows_p->dp_handle       = next_nwservice_sel_1_instance_p->system_br_saferef;
         tsc_all_flows_p->nw_port_b       = FALSE;
 
+        /* out network is not used for this flow */ 
         if(next_nwservice_sel_1_instance_p->no_of_ports == 1)
         {
           tsc_all_flows_p->out_port_no   = next_nwservice_sel_1_instance_p->port1_id;
@@ -409,6 +428,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = next_nwservice_sel_1_instance_p->vlan_id_in;
           tsc_all_flows_p->next_vlan_id  = 0;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+
+          nschain_repository_entry_p->nw_type = next_nwservice_sel_1_instance_p->inport_nw_type; 
+          nschain_repository_entry_p->nid     = next_nwservice_sel_1_instance_p->inport_nw_id;   
         }
         /* F4 Flow */ 
         tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
@@ -443,6 +465,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = 0;
           tsc_all_flows_p->next_vlan_id  = 0;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+          
+          nschain_repository_entry_p->nw_type = first_nwservice_sel_1_instance_p->outport_nw_type;
+          nschain_repository_entry_p->nid     = first_nwservice_sel_1_instance_p->outport_nw_id;
         }
         /* F1 Flow */  
         tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p, 
@@ -455,6 +480,7 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
         tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef;
         tsc_all_flows_p->nw_port_b       = FALSE;
 
+        /* out network is not used for this flow */
         if(next_nwservice_sel_1_instance_p->no_of_ports == 1)
         {
           tsc_all_flows_p->pkt_origin    = VM_NS;
@@ -472,6 +498,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = 0;
           tsc_all_flows_p->next_vlan_id  = 0;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+
+          nschain_repository_entry_p->nw_type = next_nwservice_sel_1_instance_p->inport_nw_type;
+          nschain_repository_entry_p->nid     = next_nwservice_sel_1_instance_p->inport_nw_id;
         }
         /* TBD F2 Flow Is it required. F1 may be enough. */
         tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
@@ -495,8 +524,8 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
     tsc_all_flows_p->table_no        = TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1;
     tsc_all_flows_p->dp_handle       = first_nwservice_sel_1_instance_p->system_br_saferef;
     tsc_all_flows_p->out_port_no     = 0;
-    tsc_all_flows_p->nw_port_b       =  FALSE;
-
+    tsc_all_flows_p->nw_port_b       = FALSE;
+    tsc_all_flows_p->nid_vm          = nid;
     if(first_nwservice_sel_1_instance_p->no_of_ports == 1)
     {
       tsc_all_flows_p->pkt_origin    = VM_NS;
@@ -512,24 +541,33 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
       tsc_all_flows_p->match_vlan_id = 0;
       tsc_all_flows_p->next_vlan_id  = 0;
       tsc_all_flows_p->vlan_id_pkt   = 0;
+      
+      nschain_repository_entry_p->nw_type = first_nwservice_sel_1_instance_p->outport_nw_type;
+      nschain_repository_entry_p->nid     = first_nwservice_sel_1_instance_p->outport_nw_id;
+
+      /* Going to VM */
+      nschain_repository_entry_p->out_nw_type = first_nwservice_sel_1_instance_p->inport_nw_type;
+      nschain_repository_entry_p->out_nid     = first_nwservice_sel_1_instance_p->inport_nw_id;
     }
     /* F6 Flow */
     tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
                                           tsc_all_flows_p,
                                           first_nwservice_sel_1_instance_p,
                                           &repository_entry_1_p);
-    /*
+  
+    //nschain_repository_entry_p->nw_type = nw_type;  /* VM values */
+    //nschain_repository_entry_p->nid     = nid;
+
     use_dstmac = TRUE;
 
     tsc_nsc_send_proactive_flow_table_3_zone_left(nschain_repository_entry_p,
                                                   first_nwservice_sel_1_instance_p,
-                                                  use_dstmac);
-    */ 
-#if 1
+                                                  use_dstmac,nid);
+#if 0
     use_dstmac = FALSE;
     tsc_nsc_send_proactive_flow_table_3_zone_left(nschain_repository_entry_p,
                                                   first_nwservice_sel_1_instance_p,
-                                                  use_dstmac);
+                                                  use_dstmac,nid);
 #endif                                           
   }
 
@@ -593,6 +631,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = first_nwservice_sel_2_instance_p->vlan_id_in;
           tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_2_instance_p->vlan_id_out;
           tsc_all_flows_p->vlan_id_pkt   = first_nwservice_sel_2_instance_p->vlan_id_in;
+      
+          nschain_repository_entry_p->out_nw_type = next_nwservice_sel_2_instance_p->inport_nw_type;
+          nschain_repository_entry_p->out_nid     = next_nwservice_sel_2_instance_p->inport_nw_id;
         }
         else /* 2-port */
         {
@@ -601,6 +642,12 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = 0; /* Don't add match field */
           tsc_all_flows_p->next_vlan_id  = next_nwservice_sel_2_instance_p->vlan_id_out;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+          
+          nschain_repository_entry_p->nw_type = first_nwservice_sel_2_instance_p->inport_nw_type;
+          nschain_repository_entry_p->nid     = first_nwservice_sel_2_instance_p->inport_nw_id;
+
+          nschain_repository_entry_p->out_nw_type = next_nwservice_sel_2_instance_p->outport_nw_type;
+          nschain_repository_entry_p->out_nid     = next_nwservice_sel_2_instance_p->outport_nw_id;
         }
         
         retval = tsc_nvm_modules[nw_type].nvm_module_get_unicast_nwport(first_nwservice_sel_2_instance_p->switch_name,
@@ -674,6 +721,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = next_nwservice_sel_2_instance_p->vlan_id_out;
           tsc_all_flows_p->next_vlan_id  = 0;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+
+          nschain_repository_entry_p->nw_type = next_nwservice_sel_2_instance_p->outport_nw_type;
+          nschain_repository_entry_p->nid     = next_nwservice_sel_2_instance_p->outport_nw_id;
         }
         /* F4 Flow */         
         tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
@@ -709,6 +759,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = 0;
           tsc_all_flows_p->next_vlan_id  = 0;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+
+          nschain_repository_entry_p->nw_type = first_nwservice_sel_2_instance_p->inport_nw_type;
+          nschain_repository_entry_p->nid     = first_nwservice_sel_2_instance_p->inport_nw_id;
         }
         /* F1 Flow */  
         tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
@@ -738,6 +791,9 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
           tsc_all_flows_p->match_vlan_id = 0;
           tsc_all_flows_p->next_vlan_id  = 0;
           tsc_all_flows_p->vlan_id_pkt   = 0;
+    
+          nschain_repository_entry_p->nw_type = next_nwservice_sel_2_instance_p->outport_nw_type;
+          nschain_repository_entry_p->nid     = next_nwservice_sel_2_instance_p->outport_nw_id;
         }
 
         /* F2 Flow It may not be required and F1 is sufficient.*/
@@ -764,7 +820,7 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
     tsc_all_flows_p->dp_handle       = first_nwservice_sel_2_instance_p->system_br_saferef;  
     tsc_all_flows_p->out_port_no     = 0;
     tsc_all_flows_p->nw_port_b       = FALSE;
-     
+    tsc_all_flows_p->nid_vm          = nid;
     if(first_nwservice_sel_2_instance_p->no_of_ports == 1)
     {
       tsc_all_flows_p->pkt_origin    = VM_NS;
@@ -780,6 +836,13 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
       tsc_all_flows_p->match_vlan_id = 0;
       tsc_all_flows_p->next_vlan_id  = 0;
       tsc_all_flows_p->vlan_id_pkt   = 0;
+
+      nschain_repository_entry_p->nw_type = first_nwservice_sel_2_instance_p->inport_nw_type;
+      nschain_repository_entry_p->nid     = first_nwservice_sel_2_instance_p->inport_nw_id;
+  
+      /* Going to VM */
+      nschain_repository_entry_p->out_nw_type = first_nwservice_sel_2_instance_p->inport_nw_type;
+      nschain_repository_entry_p->out_nid     = first_nwservice_sel_2_instance_p->inport_nw_id;
     }
     tsc_nsc_send_proactive_flow_zone_left(nschain_repository_entry_p,
                                           tsc_all_flows_p,
@@ -787,20 +850,21 @@ int32_t tsc_send_all_flows_to_all_tsas_zone_left(struct nschain_repository_entry
                                           &repository_entry_1_p);
     /* Add a flow to Table 3 */
 
-#if 1     
+     //nschain_repository_entry_p->nw_type = nw_type;  /* VM values */
+     //nschain_repository_entry_p->nid     = nid;
+
+#if 0     
      use_dstmac = TRUE;
      tsc_nsc_send_proactive_flow_table_3_zone_left(nschain_repository_entry_p,
                                                    first_nwservice_sel_2_instance_p,
-                                                   use_dstmac);
+                                                   use_dstmac,nid);
 #endif
 
-/*
      use_dstmac = FALSE;
 
      tsc_nsc_send_proactive_flow_table_3_zone_left(nschain_repository_entry_p,
                                                    first_nwservice_sel_2_instance_p,
-                                                   use_dstmac);
-*/                                         
+                                                   use_dstmac,nid);
   }    
     CNTLR_RCU_READ_LOCK_RELEASE();
     return retval;
@@ -816,11 +880,9 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
   uint32_t nid,hashkey,hashmask,offset,index,magic,ii;
   int32_t  retval = OF_SUCCESS;
   struct   nschain_repository_entry *nsc_repository_entry_p,*nsc_repository_scan_node_p;
-
   uint64_t  vn_handle,crm_port_handle;
   struct    mchash_table*  nsc_repository_table_p;
   void*     nsc_repository_mempool_g;
-
   uchar8_t* hashobj_p = NULL;
   struct    vn_service_chaining_info* vn_nsc_info_p;
   struct    crm_virtual_network*      vn_entry_p;
@@ -829,8 +891,6 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
   nw_type = (nschain_repository_entry_first_p->nw_type);
   nid     = (nschain_repository_entry_first_p->nid);
 
-  //printf("nw_type = %d, nid = %d \r\n",nw_type,nid);
- 
   retval = tsc_nvm_modules[nw_type].nvm_module_get_vnhandle_by_nid(nid,&vn_handle);
   if(retval != OF_SUCCESS)
   {
@@ -848,7 +908,12 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    return OF_FAILURE;
+  }    
   if(tsc_flow_p->table_no == TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1)
     nsc_repository_mempool_g = vn_nsc_info_p->nsc_repository_table_1_mempool_g; 
   else if(tsc_flow_p->table_no == TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2)
@@ -865,6 +930,8 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
 
   nsc_repository_entry_p->nw_type = nw_type;
   nsc_repository_entry_p->nid     = nid;
+  nsc_repository_entry_p->out_nw_type = nschain_repository_entry_first_p->out_nw_type;
+  nsc_repository_entry_p->out_nid     = nschain_repository_entry_first_p->out_nid;   
 
   nsc_repository_entry_p->selector.ethernet_type = nschain_repository_entry_first_p->selector.ethernet_type;
   nsc_repository_entry_p->selector.protocol      = nschain_repository_entry_first_p->selector.protocol;
@@ -1017,7 +1084,8 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
   strcpy(nsc_repository_entry_p->local_switch_name_p,nw_service_p->switch_name);
 
   nsc_repository_entry_p->in_port_id    = tsc_flow_p->inport_id;
-  nsc_repository_entry_p->metadata      = (nschain_repository_entry_first_p->metadata & 0xF0FFFFFFFFFFFFFF);
+  nsc_repository_entry_p->metadata      = (nschain_repository_entry_first_p->metadata & 0xF0FFFFFFFFFF0000);
+  nsc_repository_entry_p->metadata      = (nsc_repository_entry_p->metadata | nsc_repository_entry_p->nid);
   nsc_repository_entry_p->serviceport   = (uint16_t)((nschain_repository_entry_first_p->metadata) >> SERVICE_PORT_OFFSET);
   nsc_repository_entry_p->metadata_mask = 0xF0FFFFFFFFFFFFFF;
   nsc_repository_entry_p->pkt_origin    = tsc_flow_p->pkt_origin;
@@ -1063,7 +1131,7 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
     {
       /* Assuming it is a remote port get out_port_no,tun_dest_ip,remote_switch_name */
       retval = tsc_nvm_modules[nw_type].nvm_module_get_vmport_by_dmac_nid(nsc_repository_entry_p->selector.dst_mac,
-                                                                          nid,&crm_port_handle);
+                                                                          tsc_flow_p->nid_vm,&crm_port_handle);
 
       if(retval != OF_SUCCESS)
       {
@@ -1191,11 +1259,12 @@ int32_t tsc_nsc_send_proactive_flow_zone_left(struct    nschain_repository_entry
 }
 int32_t tsc_nsc_send_proactive_flow_table_3_zone_left(struct    nschain_repository_entry* nschain_repository_entry_first_p,
                                                       struct    nwservice_instance *nw_service_p,
-                                                      uint8_t   use_dstmac )
+                                                      uint8_t   use_dstmac,
+                                                      uint32_t  nid)
 {
   uint64_t  crm_port_handle,vn_handle,dp_handle,metadata;
   uint32_t  offset,index,magic,hashkey,hashmask;
-  uint32_t  dst_mac_high,dst_mac_low,nid;
+  uint32_t  dst_mac_high,dst_mac_low;
   uint16_t  serviceport;
   uint8_t   heap_b,nw_type;
   uchar8_t  *hashobj_p = NULL;
@@ -1213,9 +1282,10 @@ int32_t tsc_nsc_send_proactive_flow_table_3_zone_left(struct    nschain_reposito
   dp_handle  = nw_service_p->system_br_saferef;
 
   nw_type =  nschain_repository_entry_first_p->nw_type;
-  nid     =  nschain_repository_entry_first_p->nid;
+  nschain_repository_entry_first_p->nid = nid;
 
-  metadata     = (nschain_repository_entry_first_p->metadata & 0xF0FFFFFFFFFFFFFF);
+  metadata     = (nschain_repository_entry_first_p->metadata & 0xF0FFFFFFFFFF0000);
+  metadata     = (nschain_repository_entry_first_p->metadata | nid); 
   serviceport  = (uint16_t)((nschain_repository_entry_first_p->metadata) >> SERVICE_PORT_OFFSET);
 
   if(use_dstmac == TRUE)
@@ -1246,7 +1316,12 @@ int32_t tsc_nsc_send_proactive_flow_table_3_zone_left(struct    nschain_reposito
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    return OF_FAILURE;
+  }    
   offset = NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
 
   nsc_repository_table_p   = vn_nsc_info_p->nsc_repository_table_3_p;
@@ -1268,8 +1343,6 @@ int32_t tsc_nsc_send_proactive_flow_table_3_zone_left(struct    nschain_reposito
       continue;
 
      OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"table_3 ucastpkt_outport repository entry found,skipping proactive push");
-     //printf("\r\n table_3 ucastpkt_outport repository entry found,skipping proactive push");  
-     //printf("dst_mac_low = %x",dst_mac_low);
      return OF_SUCCESS;
   }   
 
@@ -1284,8 +1357,6 @@ int32_t tsc_nsc_send_proactive_flow_table_3_zone_left(struct    nschain_reposito
     return OF_FAILURE;
   }
   
-  //printf("\r\nT3 procpush dst_mac_low = %x",dst_mac_low);
-
   strcpy(ucastpkt_outport_repository_entry_p->local_switch_name_p,nw_service_p->switch_name);
   ucastpkt_outport_repository_entry_p->nw_type        = nw_type;
   ucastpkt_outport_repository_entry_p->dp_handle      = dp_handle;
@@ -1310,6 +1381,10 @@ int32_t tsc_nsc_send_proactive_flow_table_3_zone_left(struct    nschain_reposito
   do
   {
     /* Assuming it is a remote port get out_port_no,tun_dest_ip,remote_switch_name */
+    /* In 2 port case also, it works as we require that the two communicating VMs are in the same VN for them 
+       to respond to ARP requests.
+       The communicating VMs must be in opposite (LEFT,RIGHT) zones. 
+    */   
     retval = tsc_nvm_modules[nw_type].nvm_module_get_vmport_by_dmac_nid(ucastpkt_outport_repository_entry_p->dst_mac,
                                                                         ucastpkt_outport_repository_entry_p->nid,
                                                                         &crm_port_handle);

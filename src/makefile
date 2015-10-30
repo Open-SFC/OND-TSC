@@ -40,7 +40,7 @@ OBJS =  $(BIN_DIR)/tsc_init.o\
 	$(BIN_DIR)/tsc_vxn_views_api.o\
         $(BIN_DIR)/nicira_tun_ext.o\
         $(BIN_DIR)/tsc_ofv1_3_plugin.o\
-        $(BIN_DIR)/tsc_bintree.o\
+     #  $(BIN_DIR)/tsc_bintree.o\
         $(BIN_DIR)/list_selectors.o\
         $(BIN_DIR)/list_repository.o\
 

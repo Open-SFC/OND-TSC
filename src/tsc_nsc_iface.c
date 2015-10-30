@@ -105,8 +105,8 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
   {
    nschain_repository_entry_p->selector.selector_type  = selector_type;
    nschain_repository_entry_p->selector.cnbind_node_p  = cn_bind_entry_p; /* Added to make it work for proactive flow push */
-   nschain_repository_entry_p->zone                    = cn_bind_entry_p->selector_1.zone;
-   nschain_repository_entry_p->selector.zone           = cn_bind_entry_p->selector_1.zone;
+   //nschain_repository_entry_p->zone                    = cn_bind_entry_p->selector_1.zone_direction;
+   //nschain_repository_entry_p->selector.zone_direction = cn_bind_entry_p->selector_1.zone_direction;
    nschain_repository_entry_p->selector.hashkey        = cn_bind_entry_p->selector_1.hashkey;
 
    nschain_repository_entry_p->selector.index = cn_bind_entry_p->selector_1.index;
@@ -157,11 +157,15 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
             free(cn_bind_entry_p->nwservice_info.nw_services_p);
 
           vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-          mempool_release_mem_block(vn_nsc_info_p->nsc_cn_bind_mempool_g,
-                                    (uchar8_t *)cn_bind_entry_p,
-                                    cn_bind_entry_p->heap_b);
+          vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+          if(vn_nsc_info_p != NULL)
+          {
+            mempool_release_mem_block(vn_nsc_info_p->nsc_cn_bind_mempool_g,
+                                      (uchar8_t *)cn_bind_entry_p,
+                                      cn_bind_entry_p->heap_b);
 
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"cn_bind_entry is released to mempool as nsc lookup failed");
+            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"cn_bind_entry is released to mempool as nsc lookup failed");
+          }  
        }
        CNTLR_RCU_READ_LOCK_RELEASE(); 
       }        
@@ -177,7 +181,12 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
     if(retval == OF_SUCCESS)
     {
       vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-      retval = nsc_add_selectors(vn_nsc_info_p->l2_connection_to_nsinfo_bind_table_p,vn_nsc_info_p->nsc_cn_bind_mempool_g ,cn_bind_entry_p);
+      vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+      retval = OF_FAILURE;
+      if(vn_nsc_info_p != NULL)
+      { 
+        retval = nsc_add_selectors(vn_nsc_info_p->l2_connection_to_nsinfo_bind_table_p,vn_nsc_info_p->nsc_cn_bind_mempool_g ,cn_bind_entry_p);
+      }
     }
     CNTLR_RCU_READ_LOCK_RELEASE();  
     if(retval == OF_FAILURE)
@@ -192,10 +201,12 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
     nschain_repository_entry_p->selector.other_selector_p->magic = cn_bind_entry_p->selector_2.magic;
     nschain_repository_entry_p->selector.other_selector_p->safe_reference = cn_bind_entry_p->selector_2.safe_reference;
 
+    nschain_repository_entry_p->zone  = cn_bind_entry_p->selector_1.zone_direction;
+    nschain_repository_entry_p->selector.zone_direction = cn_bind_entry_p->selector_1.zone_direction;
   }
   else if(retval == NSC_CONNECTION_BIND_ENTRY_FOUND)
   {
-    nschain_repository_entry_p->zone  = nschain_repository_entry_p->selector.zone;
+    nschain_repository_entry_p->zone  = nschain_repository_entry_p->selector.zone_direction;
   }    
   
   nschain_repository_entry_p->vm_and_service1_not_on_same_switch = 0;
@@ -213,6 +224,7 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
     no_of_nwservice_instances  =  cn_bind_entry_p->nwservice_info.no_of_nwservice_instances;
     nw_services_p = (struct  nw_services_to_apply *)cn_bind_entry_p->nwservice_info.nw_services_p;
     OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"no_of_nwservice_instances = %d",no_of_nwservice_instances);
+    printf("NS=%d",no_of_nwservice_instances);
 
     #if 1  /* comment if order of services shall not be reversed for the second selector. */ 
     if(selector_type == SELECTOR_SECONDARY)
@@ -294,12 +306,12 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
             {
               if(nschain_repository_entry_p->zone == ZONE_LEFT)
               {
-                if((selector_type == SELECTOR_PRIMARY) && (nwservice_instance_p->port2_id == nschain_repository_entry_p->in_port_id))
+                if(nwservice_instance_p->port2_id == nschain_repository_entry_p->in_port_id)
                 {
                   nsc_nw_function_found = 1;
                   nschain_repository_entry_p->vlan_id_pkt = 0;
                 }      
-                else if((selector_type == SELECTOR_SECONDARY) && (nwservice_instance_p->port1_id == nschain_repository_entry_p->in_port_id))
+                else if(nwservice_instance_p->port1_id == nschain_repository_entry_p->in_port_id)
                 {
                   nsc_nw_function_found = 1;
                   nschain_repository_entry_p->vlan_id_pkt = 0;
@@ -307,12 +319,12 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
               }  
               else /* ZONE_RIGHT */
               {
-                if((selector_type == SELECTOR_PRIMARY) && (nwservice_instance_p->port1_id == nschain_repository_entry_p->in_port_id))
+                if(nwservice_instance_p->port1_id == nschain_repository_entry_p->in_port_id)
                 {
                   nsc_nw_function_found = 1;
                   nschain_repository_entry_p->vlan_id_pkt = 0;
                 }
-                else if((selector_type == SELECTOR_SECONDARY) && (nwservice_instance_p->port2_id == nschain_repository_entry_p->in_port_id))
+                else if(nwservice_instance_p->port2_id == nschain_repository_entry_p->in_port_id)
                 {
                   nsc_nw_function_found = 1;
                   nschain_repository_entry_p->vlan_id_pkt = 0;
@@ -458,11 +470,12 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
         do
         {
           /* Assuming it is a remote port get out_port_no,tun_dest_ip,remote_switch_name */
-          printf("\r\n crashing dst mac = " );
+          //printf("\r\n crashing dst mac = " );
           for(ii = 0;ii<6;ii++)
           {
             printf("%x",nschain_repository_entry_p->selector.dst_mac[ii]);
           }    
+          nschain_repository_entry_p->nid = nwservice_instance_p->inport_nw_id;
           retval = tsc_nvm_modules[nschain_repository_entry_p->nw_type].nvm_module_get_vmport_by_dmac_nid(nschain_repository_entry_p->selector.dst_mac,
                                                                                                           nschain_repository_entry_p->nid,
                                                                                                           &crm_port_handle);
@@ -513,6 +526,9 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
               }
               nschain_repository_entry_p->ns_port_b = TRUE;
               nschain_repository_entry_p->nw_port_b = TRUE;
+              /* NSM Testing 2 Lines */
+              nschain_repository_entry_p->out_nw_type = nwservice_instance_p->inport_nw_type;
+              nschain_repository_entry_p->out_nid     = nwservice_instance_p->inport_nw_id;
           }
         }while(0);
 
@@ -604,7 +620,26 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
         CNTLR_RCU_READ_LOCK_RELEASE();
         return OF_FAILURE;
       }
-      nschain_repository_entry_p->nw_port_b = TRUE;
+      nschain_repository_entry_p->nw_port_b   = TRUE;
+      nschain_repository_entry_p->out_nw_type = nwservice_instance_p->inport_nw_type; 
+      nschain_repository_entry_p->out_nid     = nwservice_instance_p->inport_nw_id;
+      
+      if(nwservice_instance_p->no_of_ports == 2) 
+      {
+        //if(((nschain_repository_entry_p->zone == ZONE_LEFT)  && (selector_type == SELECTOR_PRIMARY))
+        //                                           ||
+        //   ((nschain_repository_entry_p->zone == ZONE_RIGHT) && (selector_type == SELECTOR_SECONDARY)))
+        if(nschain_repository_entry_p->zone == ZONE_LEFT)
+        {
+          nschain_repository_entry_p->out_nw_type = nwservice_instance_p->inport_nw_type;
+          nschain_repository_entry_p->out_nid     = nwservice_instance_p->inport_nw_id;
+        }
+        else if(nschain_repository_entry_p->zone == ZONE_RIGHT)
+        {
+          nschain_repository_entry_p->out_nw_type = nwservice_instance_p->outport_nw_type;
+          nschain_repository_entry_p->out_nid     = nwservice_instance_p->outport_nw_id;
+        }    
+      }    
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG," nw side unicastport number = %d",nschain_repository_entry_p->out_port_no);
     }  
     else
@@ -621,10 +656,11 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
       }
       else
       {
-        if(((nschain_repository_entry_p->zone == ZONE_LEFT) && (selector_type == SELECTOR_SECONDARY)) 
-                                                             ||
-           ((nschain_repository_entry_p->zone == ZONE_RIGHT) && (selector_type == SELECTOR_PRIMARY))                                                  
-          )
+       // if(((nschain_repository_entry_p->zone == ZONE_LEFT) && (selector_type == SELECTOR_SECONDARY)) 
+       //                                                      ||
+       //    ((nschain_repository_entry_p->zone == ZONE_RIGHT) && (selector_type == SELECTOR_PRIMARY))                                                  
+       // )
+        if(nschain_repository_entry_p->zone == ZONE_RIGHT)      
         {
           nschain_repository_entry_p->out_port_no = nwservice_instance_p->port2_id;
         }
@@ -638,7 +674,11 @@ int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_rep
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"port number = %d",nschain_repository_entry_p->out_port_no); 
     }
   }
-
+  else
+  {
+    nschain_repository_entry_p->out_nw_type = nwservice_instance_p->inport_nw_type;
+    nschain_repository_entry_p->out_nid     = nwservice_instance_p->inport_nw_id;
+  } 
   CNTLR_RCU_READ_LOCK_RELEASE(); 
   
   nschain_repository_entry_p->copy_local_mac_addresses_b       = FALSE;
@@ -821,7 +861,7 @@ void nsc_print_repository_entry(struct nschain_repository_entry* nschain_reposit
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"flow_mod_priority = %d",nschain_repository_entry_p->flow_mod_priority);
 }
 /*****************************************************************************************************************************************/
-/* Zone Less traffic */
+/* Zone Less traffic   2 port is not supported with zone_less */
 int32_t tsc_send_all_flows_to_all_tsas(struct nschain_repository_entry* nschain_repository_entry_p)
 {
   uint8_t  nw_type,no_of_nwservice_instances_1,no_of_nwservice_instances_2;
@@ -1506,7 +1546,12 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"vn_nsc_info_p is NULL");
+    return OF_FAILURE;
+  }
   if(tsc_flow_p->table_no == TSC_APP_OUTBOUND_NS_CHAIN_TABLE_ID_1)
     nsc_repository_mempool_g = vn_nsc_info_p->nsc_repository_table_1_mempool_g; 
   else if(tsc_flow_p->table_no == TSC_APP_INBOUND_NS_CHAIN_TABLE_ID_2)
@@ -1523,7 +1568,9 @@ int32_t tsc_nsc_send_proactive_flow(struct    nschain_repository_entry* nschain_
 
   nsc_repository_entry_p->nw_type = nw_type;
   nsc_repository_entry_p->nid     = nid;
-
+  nsc_repository_entry_p->out_nw_type = nw_type;
+  nsc_repository_entry_p->out_nid     = nid;
+  
   nsc_repository_entry_p->selector.ethernet_type = nschain_repository_entry_first_p->selector.ethernet_type;
   nsc_repository_entry_p->selector.protocol      = nschain_repository_entry_first_p->selector.protocol;
 
@@ -1905,7 +1952,12 @@ int32_t tsc_nsc_send_proactive_flow_table_3(struct    nschain_repository_entry* 
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to get vn_nsc_info_p");
+    return OF_FAILURE;
+  }    
   offset = NSC_UCASTPKT_REPOSITORY_NODE_OFFSET;
 
   nsc_repository_table_p   = vn_nsc_info_p->nsc_repository_table_3_p;

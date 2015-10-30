@@ -631,6 +631,7 @@ void tsc_add_sw1vm1_port1()
                                "virtnet1",
                                "SWITCH1-VM1",
                                 sw1vm1_mac1,
+                                0x0c0c0d05,
                                 &sw1vm1_port1_handle
                                );
 
@@ -653,6 +654,7 @@ void tsc_add_sw3vm5_port1()
                                "virtnet1",
                                "SWITCH3-VM5",
                                 sw3vm5_mac1,
+                                0x0c0c0d06,
                                 &sw3vm1_port1_handle
                               );
 

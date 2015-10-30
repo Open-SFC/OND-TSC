@@ -400,11 +400,14 @@ int32_t tsc_vxn_get_vmports_by_swname_nid(char *switch_name_p,
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "Failed to get crm port information");
         break;
       }
-      if((no_of_vmside_ports<=(*no_of_vmside_ports_p)) && (port_info_p->crm_port_type != VM_GUEST_PORT))
-      {
-        no_of_vmside_ports++;
-        vmside_ports_p[index]=port_info_p->port_id;
-        index++;
+      if((no_of_vmside_ports<=(*no_of_vmside_ports_p))) // && (port_info_p->crm_port_type == VM_PORT))(port_info_p->crm_port_type != VM_GUEST_PORT))
+      {                                                   /* Avoiding ARP requests reaching SVM ports */  
+        if((port_info_p->crm_port_type == VM_PORT)|| (port_info_p->crm_port_type == VMNS_PORT))   /* Avoiding ARP requests reaching 2 port SVMs */
+        {
+          no_of_vmside_ports++;
+          vmside_ports_p[index]=port_info_p->port_id;
+          index++;
+        }  
       }
       else
       {

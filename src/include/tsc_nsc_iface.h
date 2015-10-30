@@ -45,6 +45,7 @@ struct tsa_all_flows_members
   uint8_t   copy_original_mac_addresses_b;
   uint8_t   nw_port_b;
   uint32_t  remote_ip;
+  uint32_t  nid_vm;   /* To find the destination VM */
 };      
 
 int32_t nsc_get_l2_nschaining_info(struct  nschain_repository_entry* nschain_repository_entry_p,

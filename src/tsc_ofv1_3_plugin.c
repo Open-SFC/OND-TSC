@@ -102,7 +102,7 @@ int32_t tsc_ofplugin_v1_3_init(uint64_t domain_handle)
   
   do
   {
-    #if 1    
+#if 1    
     status = of_register_asynchronous_message_hook("DATA_CENTER_VIRTUAL_SWITCH_TTP", TSC_APP_CLASSIFY_TABLE_ID_0,
                                                    OF_ASYNC_MSG_PACKET_IN_EVENT,TSC_APP_PKT_IN_PRIORITY,
                                                    tsc_ofplugin_v1_3_table_0_miss_entry_pkt_rcvd,
@@ -287,7 +287,19 @@ tsc_ofplugin_v1_3_dp_ready_event(uint64_t  controller_handle,
       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_WARN, "No DP Entry with given datapath_handle=%llu",datapath_handle);
       status = OF_FAILURE;
       break;
-    }   
+    } 
+
+    /* Deleting existing entries from OF tables 0,1,2,3,4,5 */
+    for(table_id = 0; table_id < 6; table_id++)
+    {
+      if(tsc_ofplugin_v1_3_del_table_miss_entry(datapath_handle,table_id) != OF_SUCCESS)
+      {
+        status = OF_FAILURE;
+        OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Deleting existing entries failed for table %d ",table_id);
+        ;break;
+      }
+    }
+
     /* Add miss entries to the OF tables 1,2,3,4,5 */
     for(table_id = 1; table_id < 6; table_id++)
     {
@@ -295,7 +307,7 @@ tsc_ofplugin_v1_3_dp_ready_event(uint64_t  controller_handle,
       {
         status = OF_FAILURE;
         OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Adding miss entries failed for table %d ",table_id);
-        break;
+        ;break;
       }  
     }
   }while(0);
@@ -2122,8 +2134,9 @@ int32_t tsc_add_flwmod_1_3_msg_table_1(uint64_t dp_handle,
       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Adding tun dest ip to flow:tun_dest ip = %x",out_bound_nschain_repository_entry_p->remote_switch_ip);
       retval = ofu_push_set_ipv4_tun_dst_addr_in_set_field_action(msg,&(out_bound_nschain_repository_entry_p->remote_switch_ip));
 
-      tunnel_id    = (out_bound_nschain_repository_entry_p->metadata & 0xffffffff);
-      retval = ofu_push_set_logical_port_meta_data_in_set_field_action(msg,&tunnel_id /* &(out_bound_nschain_repository_entry_p->nid)*/);
+      //tunnel_id  = (out_bound_nschain_repository_entry_p->metadata & 0xffffffff);
+      tunnel_id    = out_bound_nschain_repository_entry_p->out_nid;  /* To support 2 port feature */
+      retval       = ofu_push_set_logical_port_meta_data_in_set_field_action(msg,&tunnel_id /* &(out_bound_nschain_repository_entry_p->nid)*/);
     }
     
     if((out_bound_nschain_repository_entry_p->ns_chain_b == TRUE) && (out_bound_nschain_repository_entry_p->more_nf_b == FALSE ))
@@ -2397,8 +2410,9 @@ int32_t tsc_add_flwmod_1_3_msg_table_2(uint64_t  dp_handle,
         OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Adding tun dest ip to flow:tun_dest ip = %x",in_bound_nschain_repository_entry_p->remote_switch_ip);
         retval = ofu_push_set_ipv4_tun_dst_addr_in_set_field_action(msg,&(in_bound_nschain_repository_entry_p->remote_switch_ip));
 
-        tunnel_id = (in_bound_nschain_repository_entry_p->metadata & 0xffffffff); 
-        retval = ofu_push_set_logical_port_meta_data_in_set_field_action(msg,&tunnel_id /* (in_bound_nschain_repository_entry_p->nid)*/);
+        //tunnel_id = (in_bound_nschain_repository_entry_p->metadata & 0xffffffff); 
+        tunnel_id = in_bound_nschain_repository_entry_p->out_nid; /* To support 2 port feature */ 
+        retval    = ofu_push_set_logical_port_meta_data_in_set_field_action(msg,&tunnel_id /* (in_bound_nschain_repository_entry_p->nid)*/);
       }
 
       retval = ofu_push_output_action(msg,in_bound_nschain_repository_entry_p->out_port_no,OFPCML_NO_BUFFER);

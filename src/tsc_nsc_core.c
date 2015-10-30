@@ -105,6 +105,11 @@ int32_t nsc_lookup_l2_nschaining_info(struct   ofl_packet_in* pkt_in,
       }
       else
       {
+        if((status == NSC_NWSERVICES_NOT_CONFIGURED) || (status  == NSC_CHAINSET_NOT_CONFIGURED))  
+        {
+          cn_bind_entry_p->nsc_config_status = NSC_NWSERVICES_NOT_CONFIGURED;
+          return OF_SUCCESS; /* Both VMs are of either ZONE_LEFT or ZONE_RIGHT */
+        }  
         OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"Lookup failed.Return as NSRM database is not changed"); 
         break; 
      
@@ -150,14 +155,12 @@ int32_t nsc_lookup_l2_nschaining_info(struct   ofl_packet_in* pkt_in,
        In that case cn_bind_entry_p->nwservice_info.bypass_rule_handle will be 0. */
 
     /* This function allocates the required memory for returning instance handles in nw_services_p */ 
-  
     cn_bind_entry_p->nwservice_info.no_of_nwservice_instances = 0;
     if(cn_bind_entry_p->nwservice_info.nw_services_p != NULL)
     {
       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"If nsc_get_nwservice_instances API is called second time due to database change, free the memery before calling again"); 
       free(cn_bind_entry_p->nwservice_info.nw_services_p);
     }     
-   
     status = nsc_get_nwservice_instances(cn_bind_entry_p->nwservice_info.nschain_object_handle,
                                          cn_bind_entry_p->nwservice_info.bypass_rule_handle,
                                          &(cn_bind_entry_p->nwservice_info.no_of_nwservice_instances),
@@ -178,7 +181,6 @@ int32_t nsc_lookup_l2_nschaining_info(struct   ofl_packet_in* pkt_in,
   }while(vn_nsrmdb_lookup_state !=  nsrmdb_current_state_g);
   
   OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"cn_bind_entry_p->nwservice_info.nw_services_p : %p",cn_bind_entry_p->nwservice_info.nw_services_p); 
-  
   if(status == OF_SUCCESS)
   {
     cn_bind_entry_p->nsc_config_status = NSC_NWSERVICES_CONFIGURED; 
@@ -263,13 +265,14 @@ int32_t nsc_get_matching_nschain_object(struct    nsc_selector_node* selector_p,
    uint64_t  vn_handle;
    uint64_t  srf_nschainset_object;   
 
-   struct nsrm_nschainset_object*      nschainset_object_p = NULL;
-   struct nsrm_nschain_selection_rule* selection_rule_scan_node_p = NULL;
-   struct nsrm_l2nw_service_map*       l2_service_map_record_p = NULL;
+   struct   nsrm_nschainset_object*      nschainset_object_p = NULL;
+   struct   nsrm_nschain_selection_rule* selection_rule_scan_node_p = NULL;
+   struct   nsrm_l2nw_service_map*       l2_service_map_record_p = NULL;
+   struct   nsrm_zone_record*            direction_record_scan_node_p = NULL;
 
    struct   nsrm_nschain_object* nschain_object_p;
    uint64_t hashkey,offset;
-   uint8_t  match_found_b;
+   uint8_t  match_found_b,counter;
    int32_t  retval;
 
    uint32_t* srule_src_mac_high_p;
@@ -295,6 +298,13 @@ int32_t nsc_get_matching_nschain_object(struct    nsc_selector_node* selector_p,
 
      vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
 
+     vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+     if(vn_nsc_info_p == NULL)
+     {
+       CNTLR_RCU_READ_LOCK_RELEASE();
+       OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"VN_NSC_INFO is NULL");
+       return NSC_CHAINSET_NOT_CONFIGURED;
+     }
      if(vn_nsc_info_p->service_chaining_type == SERVICE_CHAINING_NONE)
      {
        OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"NSC_SERVICE_CHAINING_NONE_CONFIGURED_FOR_VN");
@@ -318,23 +328,112 @@ int32_t nsc_get_matching_nschain_object(struct    nsc_selector_node* selector_p,
          break;
        }
      }
-     
-     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"No CHAINSET configured for the network.");
+     OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"No CHAINSET configured for the network.");
      CNTLR_RCU_READ_LOCK_RELEASE();
      return NSC_CHAINSET_NOT_CONFIGURED;
 
    }while(0);
 
-   match_found_b = FALSE;
-   hashkey = 0;
-   offset  = NSRM_SELECTION_RULE_TBL_OFFSET;
-   
    if(nschainset_object_p->nschain_selection_rule_set == 0)
    {
      CNTLR_RCU_READ_LOCK_RELEASE();
      printf("\r\n nschainset_object_p->nschain_selection_rule_set is 0\r\n");
      return NSC_CHAINSET_NOT_CONFIGURED;
    }    
+   /*********************************************************************************/
+   /* zone support */
+   if((selector_p->zone_direction == 0) || (selector_p->cnbind_node_p->selector_2.zone_direction == 0))
+   {
+     if(nschainset_object_p->zone_b == 1) 
+     {
+       counter = 0;
+       hashkey = 0;
+       offset  = NSRM_ZONE_RECORD_TBL_OFFSET;
+       
+       selector_p->zone_direction = nschainset_object_p->zone_direction_default_e;
+       selector_p->cnbind_node_p->selector_2.zone_direction = nschainset_object_p->zone_direction_default_e;
+
+       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"1. selector_p->zone = %s",selector_p->zone);
+       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"2. selector_p->cnbind_node_p->selector_2.zone = %s",selector_p->cnbind_node_p->selector_2.zone);
+       
+       if(nschainset_object_p->nszone_direction_record_set != NULL)
+       {
+         MCHASH_TABLE_SCAN(nschainset_object_p->nszone_direction_record_set,hashkey)
+         {    
+           MCHASH_BUCKET_SCAN(nschainset_object_p->nszone_direction_record_set,
+                              hashkey,
+                              direction_record_scan_node_p,
+                              struct nsrm_zone_record*, offset)        
+           {
+             OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"1. selector_p->zone = %s",selector_p->zone);
+             OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"2. selector_p->cnbind_node_p->selector_2.zone = %s",selector_p->cnbind_node_p->selector_2.zone);
+             OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"3. direction_record_scan_node_p->zone = %s", direction_record_scan_node_p->zone);
+             OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"4. direction_record_scan_node_p->zone_direction_e = %d", direction_record_scan_node_p->zone_direction_e);
+             OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"5. selector_p->cnbind_node_p->selector_2.zone length = %d",strlen(selector_p->cnbind_node_p->selector_2.zone));
+             OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"6. direction_record_scan_node_p->zone  length = %d", strlen(direction_record_scan_node_p->zone));
+             
+             if(!strcmp(direction_record_scan_node_p->zone,selector_p->zone))
+             {
+               selector_p->zone_direction = direction_record_scan_node_p->zone_direction_e;
+               OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"5. selector_p->zone_direction = %d", selector_p->zone_direction);
+               ++counter;
+             } 
+             else if(!strcmp(direction_record_scan_node_p->zone,selector_p->cnbind_node_p->selector_2.zone))
+             {
+               selector_p->cnbind_node_p->selector_2.zone_direction  = direction_record_scan_node_p->zone_direction_e;
+               OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"6. selector_p->cnbind_node_p->selector_2.zone_direction = %d", selector_p->cnbind_node_p->selector_2.zone_direction);
+               ++counter;
+             }
+             if(counter == 2)
+               break;  
+           }
+           if(counter == 2)
+             break;  
+         }
+         if((selector_p->zone_direction == ZONE_LESS) || (selector_p->cnbind_node_p->selector_2.zone_direction == ZONE_LESS))
+         {
+           selector_p->zone_direction = ZONE_LESS;
+           selector_p->cnbind_node_p->selector_2.zone_direction = ZONE_LESS;
+           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"7. selector_p->zone_direction = %d", selector_p->zone_direction);
+           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"8. selector_p->cnbind_node_p->selector_2.zone_direction = %d", selector_p->cnbind_node_p->selector_2.zone_direction);
+         }
+       }  
+       if((selector_p->zone_direction == ZONE_LEFT) || (selector_p->zone_direction == ZONE_RIGHT))
+       { 
+         if(selector_p->zone_direction == selector_p->cnbind_node_p->selector_2.zone_direction)
+         {
+           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"NSC_NWSERVICES_NOT_CONFIGURED - ZONE direction for primary and secondary is same.");
+           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"09. selector_p->zone_direction = %d", selector_p->zone_direction);
+           OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"10. selector_p->cnbind_node_p->selector_2.zone_direction = %d", selector_p->cnbind_node_p->selector_2.zone_direction);
+           return NSC_NWSERVICES_NOT_CONFIGURED;
+         }
+       }
+     }    
+     else
+     {
+       selector_p->zone_direction = ZONE_LESS;
+       selector_p->cnbind_node_p->selector_2.zone_direction = ZONE_LESS;
+       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"11. selector_p->zone_direction = %d", selector_p->zone_direction);
+       OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"12. selector_p->cnbind_node_p->selector_2.zone_direction = %d", selector_p->cnbind_node_p->selector_2.zone_direction);
+     }
+     tsc_update_zone_with_direction(selector_p->src_ip,nw_type,nid,selector_p->zone_direction);
+     tsc_update_zone_with_direction(selector_p->dst_ip,nw_type,nid,selector_p->cnbind_node_p->selector_2.zone_direction);
+   }
+   else if(nschainset_object_p->zone_b == 0) 
+   {
+     selector_p->zone_direction = ZONE_LESS;
+     selector_p->cnbind_node_p->selector_2.zone_direction = ZONE_LESS;
+     OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"13. selector_p->zone_direction = %d", selector_p->zone_direction);
+     OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"14. selector_p->cnbind_node_p->selector_2.zone_direction = %d", selector_p->cnbind_node_p->selector_2.zone_direction);
+   } 
+   OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"15. selector_p->zone_direction = %d", selector_p->zone_direction);
+   OF_LOG_MSG(OF_LOG_TSC,OF_LOG_DEBUG,"16. selector_p->cnbind_node_p->selector_2.zone_direction = %d", selector_p->cnbind_node_p->selector_2.zone_direction);
+
+   /*********************************************************************************/  
+   match_found_b =  FALSE;
+   hashkey = 0;
+   offset  = NSRM_SELECTION_RULE_TBL_OFFSET;
+
    MCHASH_TABLE_SCAN(nschainset_object_p->nschain_selection_rule_set,hashkey)
    {
       MCHASH_BUCKET_SCAN(nschainset_object_p->nschain_selection_rule_set,hashkey,
@@ -914,17 +1013,25 @@ void nsc_free_table_1_repository_entry_rcu(struct rcu_head *nsc_repository_entry
       if(retval == OF_SUCCESS)
       {
         vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-        retval = mempool_release_mem_block(vn_nsc_info_p->nsc_repository_table_1_mempool_g,(uchar8_t*)nsc_repository_node_p,nsc_repository_node_p->heap_b);
-        if(retval != MEMPOOL_SUCCESS)
-        {
-          printf("\r\n Failed to delete table_1 repository entry in rcu callback");  
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to delete table_1 repository entry in rcu callback");
-        }             
+        vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+        if(vn_nsc_info_p != NULL)
+        {            
+          retval = mempool_release_mem_block(vn_nsc_info_p->nsc_repository_table_1_mempool_g,(uchar8_t*)nsc_repository_node_p,nsc_repository_node_p->heap_b);
+          if(retval != MEMPOOL_SUCCESS)
+          {
+            printf("\r\n Failed to delete table_1 repository entry in rcu callback");  
+            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to delete table_1 repository entry in rcu callback");
+          }             
+          else
+          {
+            //printf("\r\n Successfully deleted table_1 repository entry in rcu callback");
+            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully  deleted table_1 repository entry in rcu callback");
+          }
+        } 
         else
         {
-          //printf("\r\n Successfully deleted table_1 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully  deleted table_1 repository entry in rcu callback");
-        }    
+          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to obtain vn entry for L2 network to free table_1_repository_entry");    
+        }     
       } 
     }
     else
@@ -962,17 +1069,25 @@ void nsc_free_table_2_repository_entry_rcu(struct rcu_head *nsc_repository_entry
       if(retval == OF_SUCCESS)
       {
         vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-        retval = mempool_release_mem_block(vn_nsc_info_p->nsc_repository_table_2_mempool_g,(uchar8_t*)nsc_repository_node_p,nsc_repository_node_p->heap_b);
-        if(retval != MEMPOOL_SUCCESS)
+        vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+        if(vn_nsc_info_p != NULL)
         {
-          printf("\r\n Failed to delete table_2 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to delete table_2 repository entry in rcu callback");
-        }
+          retval = mempool_release_mem_block(vn_nsc_info_p->nsc_repository_table_2_mempool_g,(uchar8_t*)nsc_repository_node_p,nsc_repository_node_p->heap_b);
+          if(retval != MEMPOOL_SUCCESS)
+          {
+            printf("\r\n Failed to delete table_2 repository entry in rcu callback");
+            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to delete table_2 repository entry in rcu callback");
+          }
+          else
+          {
+            //printf("\r\n Successfully deleted table_2 repository entry in rcu callback");
+            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully deleted table_2 repository entry in rcu callback");
+          }
+        } 
         else
         {
-          //printf("\r\n Successfully deleted table_2 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully deleted table_2 repository entry in rcu callback");
-        }
+          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to obtain vn entry for L2 network to free table_2_repository_entry");
+        }    
       }
     }
     else
@@ -1010,17 +1125,25 @@ void nsc_free_table_3_repository_entry_rcu(struct rcu_head *ucastpkt_outport_rep
       if(retval == OF_SUCCESS)
       {
         vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  
-        retval = mempool_release_mem_block(vn_nsc_info_p->nsc_repository_table_3_mempool_g,(uchar8_t*)ucastpkt_outport_repository_node_p,ucastpkt_outport_repository_node_p->heap_b);
-        if(retval != MEMPOOL_SUCCESS)
+        vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+        if(vn_nsc_info_p != NULL)
         {
-          printf("\r\n Failed to delete table_3 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to delete table_3 repository entry in rcu callback");
+          retval = mempool_release_mem_block(vn_nsc_info_p->nsc_repository_table_3_mempool_g,(uchar8_t*)ucastpkt_outport_repository_node_p,ucastpkt_outport_repository_node_p->heap_b);
+          if(retval != MEMPOOL_SUCCESS)
+          {
+            printf("\r\n Failed to delete table_3 repository entry in rcu callback");
+            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to delete table_3 repository entry in rcu callback");
+          }
+          else
+          {
+            //printf("\r\n Successfully deleted table_3 repository entry in rcu callback");
+            OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully  deleted table_3 repository entry in rcu callback");
+          }
         }
         else
         {
-          //printf("\r\n Successfully deleted table_3 repository entry in rcu callback");
-          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"Successfully  deleted table_3 repository entry in rcu callback");
-        }
+          OF_LOG_MSG(OF_LOG_TSC, OF_LOG_ERROR,"Failed to obtain vn entry for L2 network to free table_3_repository_entry");
+        }    
       }
     }
     else

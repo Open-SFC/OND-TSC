@@ -23,11 +23,12 @@
 struct tsc_bintree_node
 {
   unsigned int data;
-  unsigned int zone;
+  char         zone[CRM_MAX_ZONE_SIZE];
+  unsigned int zone_direction;
   struct tsc_bintree_node *left;
   struct tsc_bintree_node *right;
 };
 
-struct tsc_bintree_node* tsc_bintree_insert(struct tsc_bintree_node *node,unsigned data,unsigned int zone);
-struct tsc_bintree_node* tsc_bintree_find(struct tsc_bintree_node *node, int data);
+struct tsc_bintree_node* tsc_bintree_insert(struct tsc_bintree_node *node,unsigned int data,char* zone);
+struct tsc_bintree_node* tsc_bintree_find(struct tsc_bintree_node *node, unsigned int data);
 void   tsc_bintree_list(struct tsc_bintree_node* tree);

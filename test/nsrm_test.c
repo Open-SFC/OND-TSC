@@ -611,10 +611,10 @@ void nsrm_test()
    l2nw_key_object1.map_name_p = (char*)malloc(20);
    l2nw_key_object1.tenant_name_p = (char*)malloc(20);
    l2nw_config_object1[0].value.nschainset_object_name_p = (char*)malloc(20);
-   l2nw_key_object1.vn_name_p = (char*)malloc(20);
+   l2nw_key_object1.vn_name_in_p = (char*)malloc(20);
    strcpy(l2nw_key_object1.map_name_p , "l2_map1");
    strcpy(l2nw_key_object1.tenant_name_p , "t1");
-   strcpy(l2nw_key_object1.vn_name_p , "VN1");
+   strcpy(l2nw_key_object1.vn_name_in_p , "VN1");
    strcpy(l2nw_config_object1[0].value.nschainset_object_name_p ,"chainset1");
    l2nw_config_object1[1].value.admin_status_e = 1;
    ret_val = nsrm_add_l2nw_service_map_record(2,&l2nw_key_object1,&l2nw_config_object1);
@@ -995,26 +995,27 @@ void nsrm_test()
 /*End: VMs for service3 chain1 */
   strcpy(mac_buf,"01:02:03:04:05:01");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vm1","switch_1","br-int",VM_PORT,"VN1","VM1",vm_port_mac,&port_handle1);
+  ret_val = crm_add_crm_vmport("port_vm1","switch_1","br-int",VM_PORT,"VN1","VM1",vm_port_mac,0x0c0c0d07,&port_handle1);
+
   strcpy(mac_buf,"01:02:03:04:05:02");
   
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns2","switch_2","br-int",VMNS_PORT,"VN1","VM2",vm_port_mac,&port_handle2);
+  ret_val = crm_add_crm_vmport("port_vmns2","switch_2","br-int",VMNS_PORT,"VN1","VM2",vm_port_mac,0x0c0c0d08,&port_handle2);
 
   strcpy(mac_buf,"01:02:03:04:05:03");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vm3","switch_2","br-int",VMNS_PORT,"VN1","VM3",vm_port_mac,&port_handle3);
+  ret_val = crm_add_crm_vmport("port_vm3","switch_2","br-int",VMNS_PORT,"VN1","VM3",vm_port_mac,0x0c0c0d09,&port_handle3);
 
   strcpy(mac_buf,"01:02:03:04:05:04");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns4","switch_3","br-int",VMNS_PORT,"VN1","VM4",vm_port_mac,&port_handle4);
+  ret_val = crm_add_crm_vmport("port_vmns4","switch_3","br-int",VMNS_PORT,"VN1","VM4",vm_port_mac,0x0c0c0d0a,&port_handle4);
 
   strcpy(mac_buf,"01:02:03:04:05:05");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns5","switch_3","br-int",VMNS_PORT,"VN1","VM5",vm_port_mac,&port_handle5);
+  ret_val = crm_add_crm_vmport("port_vmns5","switch_3","br-int",VMNS_PORT,"VN1","VM5",vm_port_mac,0x0c0c0d0b,&port_handle5);
   strcpy(mac_buf,"01:02:03:04:05:06");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vm6","switch_1","br-int",VMNS_PORT,"VN1","VM6",vm_port_mac,&port_handle6);
+  ret_val = crm_add_crm_vmport("port_vm6","switch_1","br-int",VMNS_PORT,"VN1","VM6",vm_port_mac,0x0c0c0d0c,&port_handle6);
   strcpy(mac_buf,"01:02:03:04:05:07");
   /****attribute add call ***/
   strcpy(attr_info1.name_string,"attr1");
@@ -1040,39 +1041,39 @@ void nsrm_test()
   OF_LOG_MSG(OF_LOG_CRM,OF_LOG_DEBUG,"attr_name :%s",attr_output1.name_string);
   OF_LOG_MSG(OF_LOG_CRM,OF_LOG_DEBUG,"attr_val  :%s",attr_output1.value_string);
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns7","switch_1","br-int",VMNS_PORT,"VN1","VM7",vm_port_mac,&port_handle7);
+  ret_val = crm_add_crm_vmport("port_vmns7","switch_1","br-int",VMNS_PORT,"VN1","VM7",vm_port_mac,0x0c0c0d26,&port_handle7);
 
   strcpy(mac_buf,"01:02:03:04:05:08");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vm8","switch_2","br-int",VMNS_PORT,"VN1","VM8",vm_port_mac,&port_handle8);
+  ret_val = crm_add_crm_vmport("port_vm8","switch_2","br-int",VMNS_PORT,"VN1","VM8",vm_port_mac,0x0c0c0c0d28,&port_handle8);
 
   strcpy(mac_buf,"01:02:03:04:05:09");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns9","switch_3","br-int",VMNS_PORT,"VN1","VM9",vm_port_mac,&port_handle9);
+  ret_val = crm_add_crm_vmport("port_vmns9","switch_3","br-int",VMNS_PORT,"VN1","VM9",vm_port_mac,0x0c0c0d30,&port_handle9);
 
   strcpy(mac_buf,"01:02:03:04:05:0a");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns10","switch_3","br-int",VMNS_PORT,"VN1","VM10",vm_port_mac,&port_handle10);
+  ret_val = crm_add_crm_vmport("port_vmns10","switch_3","br-int",VMNS_PORT,"VN1","VM10",vm_port_mac,0x0c0c0d32,&port_handle10);
 
   strcpy(mac_buf,"01:02:03:04:05:0b");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vm11","switch_1","br-int",VMNS_PORT,"VN1","VM11",vm_port_mac,&port_handle11);
+  ret_val = crm_add_crm_vmport("port_vm11","switch_1","br-int",VMNS_PORT,"VN1","VM11",vm_port_mac,0x0c0c0d34,&port_handle11);
 
   strcpy(mac_buf,"01:02:03:04:05:0c");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns12","switch_1","br-int",VMNS_PORT,"VN1","VM12",vm_port_mac,&port_handle12);
+  ret_val = crm_add_crm_vmport("port_vmns12","switch_1","br-int",VMNS_PORT,"VN1","VM12",vm_port_mac,0x0c0c0d36,&port_handle12);
 
   strcpy(mac_buf,"01:02:03:04:05:0d");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vm13","switch_2","br-int",VMNS_PORT,"VN1","VM13",vm_port_mac,&port_handle13);
+  ret_val = crm_add_crm_vmport("port_vm13","switch_2","br-int",VMNS_PORT,"VN1","VM13",vm_port_mac,0x0c0c0d38,&port_handle13);
 
   strcpy(mac_buf,"01:02:03:04:05:0e");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  ret_val = crm_add_crm_vmport("port_vmns14","switch_2","br-int",VMNS_PORT,"VN1","VM14",vm_port_mac,&port_handle14);
+  ret_val = crm_add_crm_vmport("port_vmns14","switch_2","br-int",VMNS_PORT,"VN1","VM14",vm_port_mac,0x0c0c0d40,&port_handle14);
 
   strcpy(mac_buf,"01:02:03:04:05:0f");
   ret_val = of_flow_match_atox_mac_addr(mac_buf,vm_port_mac);
-  crm_add_crm_vmport("port_vmns15","switch_3","br-int",VMNS_PORT,"VN1","VM15",vm_port_mac,&port_handle15);
+  crm_add_crm_vmport("port_vmns15","switch_3","br-int",VMNS_PORT,"VN1","VM15",vm_port_mac,0x0c0c0d42,&port_handle15);
   
   strcpy(port_desc.name,"port_vm6"); 
   port_desc.port_no = 0x123456;
@@ -1518,6 +1519,7 @@ void nsc_add_sw1vm_port1()
                                 "VN1",
                                 "SWITCH1-VM",
                                  sw1vm_mac1,
+                                 0x0c0c0d20,
                                  &sw1vm_port1_handle
                                );
 
@@ -1540,6 +1542,7 @@ void nsc_add_sw2vm_port1()
                                 "VN1",
                                 "SWITCH2-VM",
                                  sw1vm_mac1,
+                                 0x0c0c0d22,
                                  &sw1vm_port1_handle
                                );
 
@@ -1562,6 +1565,7 @@ void nsc_add_sw3vm_port1()
                                 "VN1",
                                 "SWITCH3-VM",
                                  sw1vm_mac1,
+                                 0x0c0c0d24,
                                  &sw1vm_port1_handle
                                );
 

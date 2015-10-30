@@ -36,8 +36,6 @@ extern uint32_t nsc_no_of_cnbind_table_buckets_g;
 extern struct   tsc_bintree_node* tsc_bintree_root;
 extern cntlr_lock_t global_mac_lock;
 
-//uint32_t tsc_nsc_find_zone(uint32_t src_ip);
-
 uint8_t local_in_mac[6]  = {02,01,01,01,01,02};
 uint8_t local_out_mac[6] = {06,01,01,01,01,02};
 /*****************************************************************************************************************************************
@@ -78,7 +76,6 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
   int32_t  retval;
   uint8_t  heap_b;
   struct   nsc_selector_node *selector_p,*selector2_p,*selector_node_scan_p;
-  struct   tsc_bintree_node  *zone_node;
 
   hashmask = nsc_no_of_cnbind_table_buckets_g;
 
@@ -102,7 +99,12 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
   }
 
   vn_nsc_info_p = (struct vn_service_chaining_info *)(*(tscaddr_t*)((uint8_t *)vn_entry_p + vn_nsc_info_offset_g));  /* add offset to vn addr to fetch service chaining info */
-
+  vn_nsc_info_p = vn_nsc_info_p->vn_nsc_info_p;
+  if(vn_nsc_info_p == NULL)
+  {
+    CNTLR_RCU_READ_LOCK_RELEASE();
+    return OF_FAILURE;
+  }    
   offset = NSC_SELECTOR_NODE_OFFSET;
   MCHASH_BUCKET_SCAN(vn_nsc_info_p->l2_connection_to_nsinfo_bind_table_p,hashkey,selector_node_scan_p,struct nsc_selector_node *, offset)
   {
@@ -134,9 +136,9 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
     *cn_bind_node_p_p  = selector_node_scan_p->cnbind_node_p;
      
     if(selector_node_scan_p->selector_type == SELECTOR_PRIMARY)
-      pkt_selector_p->zone         = selector_node_scan_p->cnbind_node_p->selector_1.zone;
+      pkt_selector_p->zone_direction     = selector_node_scan_p->cnbind_node_p->selector_1.zone_direction;
     else
-      pkt_selector_p->zone         = selector_node_scan_p->cnbind_node_p->selector_2.zone;
+      pkt_selector_p->zone_direction     = selector_node_scan_p->cnbind_node_p->selector_2.zone_direction;
 
     if(copy_original_mac_b == TRUE)
     {
@@ -210,18 +212,18 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
   selector_p->cnbind_node_p = cn_bind_node_entry_p;
   selector_p->cnbind_node_p->stale_entry = 0;
   selector_p->cnbind_node_p->skip_this_entry = 0;
+  selector_p->zone_direction = 0;
 
-  zone_node = tsc_bintree_find(tsc_bintree_root,selector_p->src_ip);
-  if(zone_node != NULL)
-    selector_p->zone  = zone_node->zone;
-  else
-    selector_p->zone  = ZONE_LESS;  
+  retval = tsc_get_zone(selector_p->src_ip,nw_type,nid,selector_p->zone,&(selector_p->zone_direction));
+  if(retval == OF_FAILURE)
+  {
+    strcpy(selector_p->zone,"None");
+    selector_p->zone_direction = ZONE_LESS;
+  }    
+  //printf("\r\n tsc_nsc_cnbind.c selector_p->src_ip = %x",selector_p->src_ip);
+  //printf("\r\n tsc_nsc_cnbind.c selector_p->zone = %s",selector_p->zone);
+  //printf("\r\n tsc_nsc_cnbind.c selector_p->zone_direction = %x",selector_p->zone_direction);
 
-  // selector_p->zone = tsc_nsc_find_zone(selector_p->src_ip);
-  
-  printf("\r\n tsc_nsc_cnbind.c vm_ip = %x",selector_p->src_ip);
-  printf("\r\n tsc_nsc_cnbind.c zone  = %d",selector_p->zone);
-  
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"selector_type : %d",selector_p->selector_type);
    
   /* prepare the other selector */
@@ -249,17 +251,22 @@ int32_t nsc_get_cnbind_entry(struct   ofl_packet_in* pkt_in,
   selector2_p->cnbind_node_p = cn_bind_node_entry_p;
   selector_p->other_selector_p  = selector2_p;
   selector2_p->other_selector_p = selector_p;
+  selector2_p->zone_direction   = 0;
 
-  if(selector_p->zone == ZONE_LEFT)
-    selector2_p->zone = ZONE_RIGHT;
-  else if(selector_p->zone == ZONE_RIGHT)
-    selector2_p->zone = ZONE_LEFT;
-  else
-    selector2_p->zone = ZONE_LESS;
+  retval = tsc_get_zone(selector2_p->src_ip,nw_type,nid,selector2_p->zone,&(selector2_p->zone_direction));
+  if(retval == OF_FAILURE)
+  {
+    strcpy(selector2_p->zone,"None");
+    selector2_p->zone_direction = ZONE_LESS;
+  }
+
+  //printf("\r\n tsc_nsc_cnbind.c selector2_p->src_ip = %x",selector2_p->src_ip);
+  //printf("\r\n tsc_nsc_cnbind.c selector2_p->zone = %s",selector2_p->zone);
+  //printf("\r\n tsc_nsc_cnbind.c selector2_p->zone_direction = %x",selector2_p->zone_direction);
 
   OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG,"selector_type : %d",selector2_p->selector_type);
    
-  if(selector_p->zone == ZONE_LESS) 
+  if((selector_p->zone_direction != ZONE_LEFT) || (selector_p->zone_direction != ZONE_RIGHT)) 
   {
     CNTLR_LOCK_TAKE(global_mac_lock);
     local_in_mac[5]++;
@@ -707,24 +714,3 @@ uint32_t nsc_compute_hash_repository_table_3(uint16_t serviceport,
  return hashkey;
 }
 /*************************************************************************************************************************************************************************/
-#if 0
-uint32_t tsc_nsc_find_zone(uint32_t src_ip)
-{
-  uint32_t zone = ZONE_LESS;
-
-  if(src_ip == 0x0c0c0c05)
-  {
-    zone = ZONE_LEFT; 
-  }  
-  else if(src_ip == 0x0c0c0c06)
-  {    
-    zone = ZONE_RIGHT;
-  }
-  
-  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "src_ip = %x",src_ip);
-  OF_LOG_MSG(OF_LOG_TSC, OF_LOG_DEBUG, "zone   = %d",zone);
-
-  return zone;
-}    
-#endif
-/*************************************************************************************************************************************************************************/    
